@@ -1,4 +1,4 @@
-package dev.lukafink.robotprogrammer.components;
+package dev.lukasfink.robotprogrammer.components;
 
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;

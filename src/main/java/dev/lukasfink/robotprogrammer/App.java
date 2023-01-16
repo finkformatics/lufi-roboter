@@ -1,4 +1,4 @@
-package dev.lukafink.robotprogrammer;
+package dev.lukasfink.robotprogrammer;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

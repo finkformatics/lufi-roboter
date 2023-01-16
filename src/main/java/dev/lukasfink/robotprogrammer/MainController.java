@@ -1,6 +1,6 @@
-package dev.lukafink.robotprogrammer;
+package dev.lukasfink.robotprogrammer;
 
-import dev.lukafink.robotprogrammer.components.CodeBlock;
+import dev.lukasfink.robotprogrammer.components.CodeBlock;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Cursor;
