@@ -106,17 +106,24 @@ public class MainController implements Initializable {
             codeBlockNode.getScene().setCursor(Cursor.MOVE);
         });
         codeBlockNode.setOnMouseReleased(mouseEvent -> {
+            boolean intersects = false;
             for (CodeBlock codeBlock: codeBlocks) {
                 if (codeBlock == codeBlockNode) {
                     continue;
                 }
 
                 if (codeBlockNode.getBoundsInParent().intersects(codeBlock.getBoundsInParent())) {
-                    if (codeBlockNode.isPreviousAllowed() && codeBlock.isNextAllowed() && !codeBlockNode.hasPrevious() && !codeBlock.hasNext()) {
+                    intersects = true;
+                    if (codeBlockNode.getLayoutY() > codeBlock.getLayoutY() && codeBlockNode.isPreviousAllowed() && codeBlock.isNextAllowed() && !codeBlockNode.hasPrevious() && !codeBlock.hasNext()) {
                         codeBlockNode.setLayoutX(codeBlock.getLayoutX());
                         codeBlockNode.setLayoutY(codeBlock.getLayoutY() + CodeBlock.SIZE_HEIGHT + CodeBlock.SPACING);
                         codeBlock.setNext(codeBlockNode);
                         codeBlockNode.setPrevious(codeBlock);
+                    } else if (codeBlockNode.isNextAllowed() && codeBlock.isPreviousAllowed() && !codeBlockNode.hasNext() && !codeBlock.hasPrevious()) {
+                        codeBlockNode.setLayoutX(codeBlock.getLayoutX());
+                        codeBlockNode.setLayoutY(codeBlock.getLayoutY() - CodeBlock.SIZE_HEIGHT - CodeBlock.SPACING);
+                        codeBlock.setPrevious(codeBlockNode);
+                        codeBlockNode.setNext(codeBlock);
                     } else {
                         codeBlockNode.setLayoutX(codeBlockNode.getDragOriginX());
                         codeBlockNode.setLayoutY(codeBlockNode.getDragOriginY());
@@ -126,7 +133,17 @@ public class MainController implements Initializable {
                 }
             }
 
-            // TODO: Remove code block from flow?!
+            if (!intersects) {
+                if (codeBlockNode.hasNext()) {
+                    codeBlockNode.getNext().setPrevious(null);
+                    codeBlockNode.setNext(null);
+                }
+
+                if (codeBlockNode.hasPrevious()) {
+                    codeBlockNode.getPrevious().setNext(null);
+                    codeBlockNode.setPrevious(null);
+                }
+            }
 
             codeBlockNode.getScene().setCursor(Cursor.HAND);
         });
