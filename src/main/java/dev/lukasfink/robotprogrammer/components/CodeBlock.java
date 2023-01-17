@@ -3,15 +3,27 @@ package dev.lukasfink.robotprogrammer.components;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
+import javafx.scene.effect.ColorAdjust;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 
 public class CodeBlock extends StackPane {
+
+    public static enum State {
+        COMPLETE,
+        INCOMPLETE,
+        WITHOUT_CONNECTIONS
+    }
 
     public static final double SIZE_WIDTH = 386;
     public static final double SIZE_HEIGHT = 86.5;
     public static final double SPACING = -15;
+
+    private static final Color COLOR_COMPLETE = Color.rgb(0, 192, 15);
+    private static final Color COLOR_INCOMPLETE = Color.rgb(200, 150, 0);
+    private static final Color COLOR_WITHOUT_CONNECTIONS = Color.rgb(200, 80, 30);
 
     private final String text;
 
@@ -26,6 +38,10 @@ public class CodeBlock extends StackPane {
     private CodeBlock next;
     private boolean previousAllowed;
     private boolean nextAllowed;
+
+    private boolean hovered;
+
+    private State state = State.WITHOUT_CONNECTIONS;
 
     public CodeBlock(String imgPath, String text, boolean previousAllowed, boolean nextAllowed) {
         this.text = text;
@@ -52,10 +68,41 @@ public class CodeBlock extends StackPane {
         getChildren().add(label);
 
         setPrefSize(SIZE_WIDTH, SIZE_HEIGHT);
+        updateLook();
+    }
+
+    private void updateLook() {
+        Color newColor = switch (state) {
+            case COMPLETE -> COLOR_COMPLETE;
+            case INCOMPLETE -> COLOR_INCOMPLETE;
+            default -> COLOR_WITHOUT_CONNECTIONS;
+        };
+
+        if (hovered) {
+            newColor = newColor.darker();
+        }
+
+        ColorAdjust colorAdjust = new ColorAdjust();
+        colorAdjust.setHue(map((newColor.getHue() + 180) % 360, 0, 360, -1, 1));
+        colorAdjust.setBrightness(map(newColor.getBrightness(), 0, 1, -1, 1));
+        colorAdjust.setSaturation(newColor.getSaturation());
+        imageView.setEffect(colorAdjust);
     }
 
     public String getText() {
         return text;
+    }
+
+    public void setHovered(boolean hovered) {
+        this.hovered = hovered;
+
+        updateLook();
+    }
+
+    public void setState(State state) {
+        this.state = state;
+
+        updateLook();
     }
 
     public boolean hasPrevious() {
@@ -112,5 +159,9 @@ public class CodeBlock extends StackPane {
 
     public double getDragDeltaY() {
         return dragDelta.getY();
+    }
+
+    private static double map(double value, double start, double stop, double targetStart, double targetStop) {
+        return targetStart + (targetStop - targetStart) * ((value - start) / (stop - start));
     }
 }
