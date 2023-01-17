@@ -1,5 +1,7 @@
 package dev.lukasfink.robotprogrammer.components;
 
+import dev.lukasfink.robotprogrammer.flow.FlowCommand;
+import dev.lukasfink.robotprogrammer.util.Translator;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -11,12 +13,6 @@ import javafx.scene.paint.Color;
 
 public class CodeBlock extends StackPane {
 
-    public static enum State {
-        COMPLETE,
-        INCOMPLETE,
-        WITHOUT_CONNECTIONS
-    }
-
     public static final double SIZE_WIDTH = 386;
     public static final double SIZE_HEIGHT = 86.5;
     public static final double SPACING = -15;
@@ -25,7 +21,7 @@ public class CodeBlock extends StackPane {
     private static final Color COLOR_INCOMPLETE = Color.rgb(200, 150, 0);
     private static final Color COLOR_WITHOUT_CONNECTIONS = Color.rgb(200, 80, 30);
 
-    private final String text;
+    private FlowCommand flowCommand;
 
     private final Image image;
     private final ImageView imageView;
@@ -34,19 +30,10 @@ public class CodeBlock extends StackPane {
     private Point2D dragDelta = new Point2D(0, 0);
     private Point2D dragOrigin = new Point2D(0, 0);
 
-    private CodeBlock previous;
-    private CodeBlock next;
-    private boolean previousAllowed;
-    private boolean nextAllowed;
-
     private boolean hovered;
 
-    private State state = State.WITHOUT_CONNECTIONS;
-
-    public CodeBlock(String imgPath, String text, boolean previousAllowed, boolean nextAllowed) {
-        this.text = text;
-        this.previousAllowed = previousAllowed;
-        this.nextAllowed = nextAllowed;
+    public CodeBlock(String imgPath, FlowCommand flowCommand) {
+        this.flowCommand = flowCommand;
 
         image = new Image(getClass().getResourceAsStream(imgPath));
         imageView = new ImageView(image);
@@ -59,7 +46,7 @@ public class CodeBlock extends StackPane {
 
         getChildren().add(imageView);
 
-        label = new Label(text.toUpperCase());
+        label = new Label(Translator.translate(flowCommand.getInstructionText()).toUpperCase());
         label.setPrefSize(SIZE_WIDTH, SIZE_HEIGHT);
         label.setStyle("-fx-font-size: 25; -fx-text-fill: GREY");
         label.setAlignment(Pos.CENTER);
@@ -71,8 +58,8 @@ public class CodeBlock extends StackPane {
         updateLook();
     }
 
-    private void updateLook() {
-        Color newColor = switch (state) {
+    public void updateLook() {
+        Color newColor = switch (flowCommand.getState()) {
             case COMPLETE -> COLOR_COMPLETE;
             case INCOMPLETE -> COLOR_INCOMPLETE;
             default -> COLOR_WITHOUT_CONNECTIONS;
@@ -89,52 +76,14 @@ public class CodeBlock extends StackPane {
         imageView.setEffect(colorAdjust);
     }
 
-    public String getText() {
-        return text;
+    public FlowCommand getFlowCommand() {
+        return flowCommand;
     }
 
     public void setHovered(boolean hovered) {
         this.hovered = hovered;
 
         updateLook();
-    }
-
-    public void setState(State state) {
-        this.state = state;
-
-        updateLook();
-    }
-
-    public boolean hasPrevious() {
-        return previous != null;
-    }
-
-    public boolean hasNext() {
-        return next != null;
-    }
-
-    public boolean isPreviousAllowed() {
-        return previousAllowed;
-    }
-
-    public boolean isNextAllowed() {
-        return nextAllowed;
-    }
-
-    public CodeBlock getPrevious() {
-        return previous;
-    }
-
-    public CodeBlock getNext() {
-        return next;
-    }
-
-    public void setPrevious(CodeBlock previous) {
-        this.previous = previous;
-    }
-
-    public void setNext(CodeBlock next) {
-        this.next = next;
     }
 
     public void setDragDelta(double x, double y) {
