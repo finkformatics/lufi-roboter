@@ -42,9 +42,9 @@
             <version>12.3.1</version>
         </dependency>
         <dependency>
-            <groupId>org.jfxtras</groupId>
-            <artifactId>jmetro</artifactId>
-            <version>11.6.16</version>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-material2-pack</artifactId>
+            <version>12.3.1</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

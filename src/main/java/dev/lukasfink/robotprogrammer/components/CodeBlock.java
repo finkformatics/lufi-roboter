@@ -32,7 +32,10 @@ public class CodeBlock extends StackPane {
 
     private boolean hovered;
 
+    private String imgPath;
+
     public CodeBlock(String imgPath, FlowCommand flowCommand) {
+        this.imgPath = imgPath;
         this.flowCommand = flowCommand;
 
         image = new Image(getClass().getResourceAsStream(imgPath));
@@ -56,6 +59,10 @@ public class CodeBlock extends StackPane {
 
         setPrefSize(SIZE_WIDTH, SIZE_HEIGHT);
         updateLook();
+    }
+
+    public String getImgPath() {
+        return imgPath;
     }
 
     public void updateLook() {

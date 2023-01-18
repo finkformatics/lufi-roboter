@@ -11,9 +11,11 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.net.URL;
 import java.util.*;
@@ -30,7 +32,7 @@ public class MainController implements Initializable {
     private Canvas simulationCanvas;
 
     @FXML
-    private Pane graphicalStatements;
+    private AnchorPane graphicalStatements;
 
     private Image robotImage;
 
@@ -40,6 +42,13 @@ public class MainController implements Initializable {
 
     private final AudioClip selectClip;
     private final AudioClip dropClip;
+
+    private int templateBlocksMaxX;
+    private int templateBlocksMaxY;
+
+    private CodeBlock newBlock;
+
+    private FontIcon trashArea;
 
     public MainController() {
         flow = new Flow();
@@ -53,12 +62,33 @@ public class MainController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         robotImage = new Image(getClass().getResourceAsStream("balloon_robot.png"));
 
-        addCodeBlock(new CodeBlock("code_block_start.png", flow.getStartCommand()));
-        addCodeBlock(new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.FORWARD)));
-        addCodeBlock(new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.BACKWARDS)));
-        addCodeBlock(new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.TURN_RIGHT)));
-        addCodeBlock(new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.TURN_LEFT)));
-        addCodeBlock(new CodeBlock("code_block_end.png", new FlowCommand(RobotInstruction.TERMINATE)));
+        CodeBlock[] templateBlocks = new CodeBlock[]{
+                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.FORWARD)),
+                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.BACKWARDS)),
+                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.TURN_RIGHT)),
+                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.TURN_LEFT)),
+                new CodeBlock("code_block_end.png", new FlowCommand(RobotInstruction.TERMINATE)),
+        };
+
+        for (int i = 0; i < templateBlocks.length; i++) {
+            templateBlocks[i].setLayoutX(10);
+            templateBlocks[i].setLayoutY(10 + i * (CodeBlock.SIZE_HEIGHT - CodeBlock.SPACING));
+            configureTemplateBlock(templateBlocks[i]);
+        }
+
+        templateBlocksMaxX = 10 + (int) CodeBlock.SIZE_WIDTH + 10;
+        templateBlocksMaxY = 10 + templateBlocks.length * (int) CodeBlock.SIZE_HEIGHT + 10;
+
+        CodeBlock startBlock = addCodeBlock(new CodeBlock("code_block_start.png", flow.getStartCommand()));
+        startBlock.setLayoutX(templateBlocksMaxX + 150);
+        startBlock.setLayoutY(50);
+
+        graphicalStatements.getChildren().addAll(templateBlocks);
+
+        trashArea = new FontIcon("mdsal-delete:256:RED");
+        graphicalStatements.getChildren().add(trashArea);
+        AnchorPane.setBottomAnchor(trashArea, 0.0);
+        AnchorPane.setLeftAnchor(trashArea, 0.0);
 
         simulationCanvas.heightProperty().bind(simulationParent.heightProperty());
         simulationCanvas.widthProperty().bind(simulationParent.widthProperty());
@@ -89,11 +119,60 @@ public class MainController implements Initializable {
         gc.drawImage(robotImage, 50, 50, 150, 150);
     }
 
-    private void addCodeBlock(CodeBlock codeBlock) {
+    private CodeBlock addCodeBlock(CodeBlock codeBlock) {
         codeBlockMap.put(codeBlock.getFlowCommand(), codeBlock);
         flow.addCommand(codeBlock.getFlowCommand());
         makeDraggable(codeBlock);
         graphicalStatements.getChildren().add(codeBlock);
+
+        return codeBlock;
+    }
+
+    private void removeCodeBlock(CodeBlock codeBlock) {
+        codeBlockMap.remove(codeBlock.getFlowCommand());
+        flow.removeCommand(codeBlock.getFlowCommand());
+        graphicalStatements.getChildren().remove(codeBlock);
+        if (codeBlock.getFlowCommand().hasPrevious()) {
+            codeBlock.getFlowCommand().getPrevious().setNext(null);
+            codeBlock.getFlowCommand().setPrevious(null);
+        }
+
+        if (codeBlock.getFlowCommand().hasNext()) {
+            codeBlock.getFlowCommand().getNext().setPrevious(null);
+            codeBlock.getFlowCommand().setNext(null);
+        }
+    }
+
+    private void configureTemplateBlock(CodeBlock templateBlock) {
+        templateBlock.setOnMouseEntered(event -> {
+            templateBlock.getScene().setCursor(Cursor.HAND);
+        });
+
+        templateBlock.setOnMouseReleased(event -> {
+            if (newBlock != null) {
+                newBlock.getOnMouseReleased().handle(event);
+            }
+
+            newBlock = null;
+        });
+
+        templateBlock.setOnMousePressed(event -> {
+            newBlock = addCodeBlock(new CodeBlock(templateBlock.getImgPath(), new FlowCommand(templateBlock.getFlowCommand().getInstruction())));
+            newBlock.setLayoutX(templateBlock.getLayoutX());
+            newBlock.setLayoutY(templateBlock.getLayoutY());
+            newBlock.setHovered(true);
+            newBlock.getOnMousePressed().handle(event);
+        });
+
+        templateBlock.setOnMouseDragged(event -> {
+            if (newBlock != null) {
+                newBlock.getOnMouseDragged().handle(event);
+            }
+        });
+
+        templateBlock.setOnMouseExited(event -> {
+            templateBlock.getScene().setCursor(Cursor.DEFAULT);
+        });
     }
 
     private void makeDraggable(CodeBlock codeBlockNode) {
@@ -189,7 +268,13 @@ public class MainController implements Initializable {
             flow.updateStates();
             updateLooks();
 
+            trashArea.setIconColor(Color.RED);
+
             codeBlockNode.getScene().setCursor(Cursor.HAND);
+
+            if (codeBlockNode.getBoundsInParent().intersects(trashArea.getBoundsInParent())) {
+                removeCodeBlock(codeBlockNode);
+            }
         });
         codeBlockNode.setOnMouseDragged(mouseEvent -> {
             codeBlockNode.setLayoutX(mouseEvent.getSceneX() + codeBlockNode.getDragDeltaX());
@@ -204,6 +289,10 @@ public class MainController implements Initializable {
                     currentBlock.setLayoutY(codeBlockNode.getLayoutY() + distanceCounter * (CodeBlock.SIZE_HEIGHT + CodeBlock.SPACING));
                     currentBlock.setLayoutX(codeBlockNode.getLayoutX());
                 }
+            } else if (codeBlockNode.getBoundsInParent().intersects(trashArea.getBoundsInParent())) {
+                trashArea.setIconColor(Color.DARKRED);
+            } else {
+                trashArea.setIconColor(Color.RED);
             }
         });
         codeBlockNode.setOnMouseEntered(mouseEvent -> {
