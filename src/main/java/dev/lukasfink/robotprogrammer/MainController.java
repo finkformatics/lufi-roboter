@@ -1,22 +1,28 @@
 package dev.lukasfink.robotprogrammer;
 
 import dev.lukasfink.robotprogrammer.components.CodeBlock;
+import dev.lukasfink.robotprogrammer.components.Robot;
 import dev.lukasfink.robotprogrammer.flow.Flow;
 import dev.lukasfink.robotprogrammer.flow.FlowCommand;
 import dev.lukasfink.robotprogrammer.flow.RobotInstruction;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import org.kordamp.ikonli.javafx.FontIcon;
 
+import java.io.File;
 import java.net.URL;
 import java.util.*;
 
@@ -32,9 +38,34 @@ public class MainController implements Initializable {
     private Canvas simulationCanvas;
 
     @FXML
+    private StackPane statementsStack;
+
+    @FXML
+    private Canvas gridCanvas;
+
+    @FXML
     private AnchorPane graphicalStatements;
 
-    private Image robotImage;
+    @FXML
+    private ToggleButton playButton;
+
+    @FXML
+    private Button stopButton;
+
+    @FXML
+    private MenuItem newMenuItem;
+
+    @FXML
+    private MenuItem openMenuItem;
+
+    @FXML
+    private MenuItem saveMenuItem;
+
+    @FXML
+    private MenuItem exitMenuItem;
+
+    @FXML
+    private MenuItem aboutMenuItem;
 
     private final HashMap<FlowCommand, CodeBlock> codeBlockMap;
 
@@ -50,18 +81,28 @@ public class MainController implements Initializable {
 
     private FontIcon trashArea;
 
+    private FontIcon playIcon;
+    private FontIcon pauseIcon;
+    private FontIcon stopIcon;
+
+    private Robot robot;
+
+    private Point2D gridOffset;
+    private Point2D gridDragStart;
+
     public MainController() {
         flow = new Flow();
         codeBlockMap = new HashMap<>();
+        robot = new Robot(new Image(getClass().getResourceAsStream("balloon_robot.png")));
 
         selectClip = new AudioClip(getClass().getResource("select.wav").toString());
         dropClip = new AudioClip(getClass().getResource("drop.wav").toString());
+
+        gridOffset = new Point2D(0, 0);
     }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        robotImage = new Image(getClass().getResourceAsStream("balloon_robot.png"));
-
         CodeBlock[] templateBlocks = new CodeBlock[]{
                 new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.FORWARD)),
                 new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.BACKWARDS)),
@@ -90,6 +131,25 @@ public class MainController implements Initializable {
         AnchorPane.setBottomAnchor(trashArea, 0.0);
         AnchorPane.setLeftAnchor(trashArea, 0.0);
 
+        graphicalStatements.setOnMousePressed(event -> {
+            if (event.isMiddleButtonDown()) {
+                gridDragStart = new Point2D(event.getX(), event.getY());
+            }
+        });
+
+        graphicalStatements.setOnMouseDragged(event -> {
+            if (event.isMiddleButtonDown()) {
+                Point2D diff = new Point2D(event.getX() - gridDragStart.getX(), event.getY() - gridDragStart.getY());
+                gridOffset = new Point2D(gridOffset.getX() + diff.getX(), gridOffset.getY() + diff.getY());
+                for (CodeBlock codeBlock: codeBlockMap.values()) {
+                    codeBlock.setLayoutX(codeBlock.getLayoutX() + diff.getX());
+                    codeBlock.setLayoutY(codeBlock.getLayoutY() + diff.getY());
+                }
+                redraw();
+                gridDragStart = new Point2D(event.getX(), event.getY());
+            }
+        });
+
         simulationCanvas.heightProperty().bind(simulationParent.heightProperty());
         simulationCanvas.widthProperty().bind(simulationParent.widthProperty());
 
@@ -101,13 +161,115 @@ public class MainController implements Initializable {
             redraw();
         });
 
+        simulationParent.getChildren().add(robot);
+
+        gridCanvas.heightProperty().bind(statementsStack.heightProperty());
+        gridCanvas.widthProperty().bind(statementsStack.widthProperty());
+
         redraw();
         flow.updateStates();
         updateLooks();
+
+        robot.setVisible(false);
+
+        playIcon = new FontIcon("mdmz-play_arrow:56:GREEN");
+        pauseIcon = new FontIcon("mdomz-pause:56:GREY");
+        stopIcon = new FontIcon("mdrmz-stop:56:RED");
+        playButton.setGraphic(playIcon);
+        playButton.setDisable(true);
+        playButton.setOnAction(event -> {
+            if (playButton.isSelected()) {
+                if (robot.isIdle()) {
+                    simulateCommands();
+                    robot.start();
+                } else if (robot.isPaused()) {
+                    robot.resume();
+                }
+            } else {
+                if (robot.isRunning()) {
+                    robot.pause();
+                }
+            }
+        });
+
+        stopButton.setGraphic(stopIcon);
+        stopButton.setOnAction(event -> robot.stop());
+        stopButton.setDisable(true);
+
+        robot.addStateListener(newState -> {
+            switch (newState) {
+                case IDLE -> {
+                    playButton.setSelected(false);
+                    playButton.setGraphic(playIcon);
+                    stopButton.setDisable(true);
+                }
+                case PAUSED -> {
+                    playButton.setSelected(false);
+                    playButton.setGraphic(playIcon);
+                    stopButton.setDisable(false);
+                }
+                case RUNNING -> {
+                    playButton.setSelected(true);
+                    playButton.setGraphic(pauseIcon);
+                    stopButton.setDisable(false);
+                }
+            }
+        });
+
+        exitMenuItem.setOnAction(event -> Platform.exit());
+        aboutMenuItem.setOnAction(event -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Über");
+            alert.setHeaderText("Robot Programmer");
+            alert.setContentText("Version " + App.VERSION + ", erstellt von Lukas Fink");
+            alert.showAndWait();
+        });
+
+        newMenuItem.setOnAction(event -> {
+            // TODO: reset flow and statements
+        });
+
+        openMenuItem.setOnAction(event -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+            fileChooser.setTitle("Roboteranweisungen laden");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Roboteranweisungen", "*.rbt"));
+            fileChooser.showOpenDialog(graphicalStatements.getScene().getWindow());
+        });
+
+        saveMenuItem.setOnAction(event -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
+            fileChooser.setInitialFileName("anweisungen.rbt");
+            fileChooser.setTitle("Roboteranweisungen speichern");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Roboteranweisungen", "*.rbt"));
+            fileChooser.showSaveDialog(graphicalStatements.getScene().getWindow());
+        });
+
+        new Thread(() -> {
+            try {
+                Thread.sleep(500);
+                robot.setXPos(simulationCanvas.getWidth() / 2);
+                robot.setYPos(simulationCanvas.getHeight() / 2);
+                robot.setVisible(true);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 
     private void updateSourceCode() {
         codeEditor.setText(flow.generateSourceCode());
+    }
+
+    private void simulateCommands() {
+        FlowCommand currentCommand = flow.getStartCommand();
+        while (currentCommand.hasNext()) {
+            currentCommand = currentCommand.getNext();
+            switch (currentCommand.getInstruction()) {
+                case FORWARD, BACKWARDS, TURN_LEFT, TURN_RIGHT -> robot.addCommand(currentCommand.getInstruction());
+            }
+        }
     }
 
     private void redraw() {
@@ -116,7 +278,24 @@ public class MainController implements Initializable {
         gc.setFill(Color.rgb(0, 0, 50));
         gc.fillRect(0, 0, simulationCanvas.getWidth(), simulationCanvas.getHeight());
 
-        gc.drawImage(robotImage, 50, 50, 150, 150);
+        GraphicsContext grid = gridCanvas.getGraphicsContext2D();
+        grid.clearRect(0, 0, gridCanvas.getWidth(), gridCanvas.getHeight());
+        grid.setStroke(Color.gray(0.9));
+        for (int x = -1 + ((int) gridOffset.getX() % 100); x < gridCanvas.getWidth(); x += 100) {
+            grid.strokeLine(x, 0, x, gridCanvas.getHeight());
+        }
+        for (int y = -1 + ((int) gridOffset.getY() % 100); y < gridCanvas.getHeight(); y += 100) {
+            grid.strokeLine(0, y, gridCanvas.getWidth(), y);
+        }
+
+        if (robot.isIdle()) {
+            robot.setXPos(simulationCanvas.getWidth() / 2);
+            robot.setYPos(simulationCanvas.getHeight() / 2);
+        }
+    }
+
+    private Point2D calculateFieldCenter() {
+        return new Point2D(simulationCanvas.getWidth() / 2, simulationCanvas.getHeight() / 2);
     }
 
     private CodeBlock addCodeBlock(CodeBlock codeBlock) {
@@ -157,6 +336,10 @@ public class MainController implements Initializable {
         });
 
         templateBlock.setOnMousePressed(event -> {
+            if (event.isMiddleButtonDown()) {
+                return;
+            }
+
             newBlock = addCodeBlock(new CodeBlock(templateBlock.getImgPath(), new FlowCommand(templateBlock.getFlowCommand().getInstruction())));
             newBlock.setLayoutX(templateBlock.getLayoutX());
             newBlock.setLayoutY(templateBlock.getLayoutY());
@@ -165,6 +348,10 @@ public class MainController implements Initializable {
         });
 
         templateBlock.setOnMouseDragged(event -> {
+            if (event.isMiddleButtonDown()) {
+                return;
+            }
+
             if (newBlock != null) {
                 newBlock.getOnMouseDragged().handle(event);
             }
@@ -177,21 +364,27 @@ public class MainController implements Initializable {
 
     private void makeDraggable(CodeBlock codeBlockNode) {
         codeBlockNode.setOnMousePressed(mouseEvent -> {
+            if (mouseEvent.isMiddleButtonDown()) {
+                return;
+            }
+
             selectClip.play();
             codeBlockNode.setDragDelta(codeBlockNode.getLayoutX() - mouseEvent.getSceneX(), codeBlockNode.getLayoutY() - mouseEvent.getSceneY());
             codeBlockNode.setDragOrigin(codeBlockNode.getLayoutX(), codeBlockNode.getLayoutY());
             codeBlockNode.getScene().setCursor(Cursor.MOVE);
         });
         codeBlockNode.setOnMouseReleased(mouseEvent -> {
+            if (mouseEvent.isMiddleButtonDown()) {
+                return;
+            }
+
             dropClip.play();
             boolean intersects = false;
 
             HashSet<CodeBlock> blockedBlocks = new HashSet<>();
             blockedBlocks.add(codeBlockNode);
             CodeBlock referenceBlock = codeBlockNode;
-            boolean isStartBlock = false;
             if (codeBlockNode.getFlowCommand() == flow.getStartCommand()) {
-                isStartBlock = true;
                 FlowCommand currentCommand = flow.getStartCommand();
                 while (currentCommand.hasNext()) {
                     currentCommand = currentCommand.getNext();
@@ -268,6 +461,12 @@ public class MainController implements Initializable {
             flow.updateStates();
             updateLooks();
 
+            if (flow.getStartCommand().getState() == FlowCommand.State.COMPLETE) {
+                playButton.setDisable(false);
+            } else {
+                playButton.setDisable(true);
+            }
+
             trashArea.setIconColor(Color.RED);
 
             codeBlockNode.getScene().setCursor(Cursor.HAND);
@@ -277,6 +476,10 @@ public class MainController implements Initializable {
             }
         });
         codeBlockNode.setOnMouseDragged(mouseEvent -> {
+            if (mouseEvent.isMiddleButtonDown()) {
+                return;
+            }
+
             codeBlockNode.setLayoutX(mouseEvent.getSceneX() + codeBlockNode.getDragDeltaX());
             codeBlockNode.setLayoutY(mouseEvent.getSceneY() + codeBlockNode.getDragDeltaY());
 
