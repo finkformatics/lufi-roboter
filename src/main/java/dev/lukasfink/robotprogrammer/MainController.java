@@ -34,6 +34,8 @@ import java.util.*;
 
 public class MainController implements Initializable {
 
+    private static final int GRID_GAP = 50;
+
     @FXML
     private TextArea codeEditor;
 
@@ -71,6 +73,21 @@ public class MainController implements Initializable {
     private MenuItem exitMenuItem;
 
     @FXML
+    private MenuItem noMazeMenuItem;
+
+    @FXML
+    private MenuItem maze1MenuItem;
+
+    @FXML
+    private MenuItem maze2MenuItem;
+
+    @FXML
+    private MenuItem maze3MenuItem;
+
+    @FXML
+    private MenuItem transferMenuItem;
+
+    @FXML
     private MenuItem aboutMenuItem;
 
     private static final HashMap<String, String> instructionImageMap = new HashMap<>();
@@ -103,6 +120,9 @@ public class MainController implements Initializable {
     private Point2D gridDragStart;
 
     private int templateBlocksMaxX;
+    private int templateBlocksMaxY;
+
+    private int mazeNumber;
 
     public MainController() {
         flow = new Flow();
@@ -132,17 +152,17 @@ public class MainController implements Initializable {
         }
 
         templateBlocksMaxX = 10 + (int) CodeBlock.SIZE_WIDTH + 10;
-//        int templateBlocksMaxY = 10 + templateBlocks.length * (int) CodeBlock.SIZE_HEIGHT + 10;
+        templateBlocksMaxY = 10 + templateBlocks.length * (int) (CodeBlock.SIZE_HEIGHT - CodeBlock.SPACING);
 
         CodeBlock startBlock = addCodeBlock(new CodeBlock(instructionImageMap.get(RobotInstruction.INIT.getValue()), flow.getStartCommand()));
-        startBlock.setLayoutX(templateBlocksMaxX + 150);
+        startBlock.setLayoutX(templateBlocksMaxX + 80);
         startBlock.setLayoutY(50);
 
         graphicalStatements.getChildren().addAll(templateBlocks);
 
         trashArea = new FontIcon("mdsal-delete:256:RED");
         graphicalStatements.getChildren().add(trashArea);
-        AnchorPane.setBottomAnchor(trashArea, 0.0);
+        AnchorPane.setBottomAnchor(trashArea, 100d);
         AnchorPane.setLeftAnchor(trashArea, 0.0);
 
         graphicalStatements.setOnMousePressed(event -> {
@@ -195,6 +215,8 @@ public class MainController implements Initializable {
             if (playButton.isSelected()) {
                 if (robot.isIdle()) {
                     simulateCommands();
+                    robot.setXPos(simulationCanvas.getWidth() / 2);
+                    robot.setYPos(simulationCanvas.getHeight() / 2);
                     robot.start();
                 } else if (robot.isPaused()) {
                     robot.resume();
@@ -231,13 +253,6 @@ public class MainController implements Initializable {
         });
 
         exitMenuItem.setOnAction(event -> Platform.exit());
-        aboutMenuItem.setOnAction(event -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Über");
-            alert.setHeaderText("Robot Programmer");
-            alert.setContentText("Version " + App.VERSION + ", erstellt von Lukas Fink");
-            alert.showAndWait();
-        });
 
         newMenuItem.setOnAction(event -> {
             reset(true);
@@ -288,6 +303,34 @@ public class MainController implements Initializable {
             }
         });
 
+        noMazeMenuItem.setOnAction(event -> {
+            mazeNumber = 0;
+            redraw();
+        });
+
+        maze1MenuItem.setOnAction(event -> {
+            mazeNumber = 1;
+            redraw();
+        });
+
+        maze2MenuItem.setOnAction(event -> {
+            mazeNumber = 2;
+            redraw();
+        });
+
+        maze3MenuItem.setOnAction(event -> {
+            mazeNumber = 3;
+            redraw();
+        });
+
+        aboutMenuItem.setOnAction(event -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Über");
+            alert.setHeaderText("Robot Programmer");
+            alert.setContentText("Version " + App.VERSION + ", erstellt von Lukas Fink");
+            alert.showAndWait();
+        });
+
         new Thread(() -> {
             try {
                 Thread.sleep(500);
@@ -315,6 +358,9 @@ public class MainController implements Initializable {
             startBlock.setLayoutX(templateBlocksMaxX + 150);
             startBlock.setLayoutY(50);
         }
+
+        flow.updateStates();
+        updateLooks();
     }
 
     private void updateSourceCode() {
@@ -331,21 +377,55 @@ public class MainController implements Initializable {
         }
     }
 
+    private void drawMaze1(GraphicsContext gc) {
+        gc.setFill(Color.YELLOW);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 10, simulationCanvas.getHeight() / 2 - 210, 20, 220);
+        gc.fillRect(simulationCanvas.getWidth() / 2, simulationCanvas.getHeight() / 2 - 210, 210, 20);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 10 + 200, simulationCanvas.getHeight() / 2 - 200, 20, 210);
+        gc.fillRect(simulationCanvas.getWidth() / 2 + 100, simulationCanvas.getHeight() / 2 - 10, 110, 20);
+    }
+
+    private void drawMaze2(GraphicsContext gc) {
+        drawMaze1(gc);
+        gc.fillRect(simulationCanvas.getWidth() / 2 + 100 - 10, simulationCanvas.getHeight() / 2 - 10, 20, 210);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 100, simulationCanvas.getHeight() / 2 + 200 - 10, 210, 20);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 100 - 10, simulationCanvas.getHeight() / 2 + 100, 20, 110);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 300, simulationCanvas.getHeight() / 2 + 100 - 10, 210, 20);
+    }
+
+    private void drawMaze3(GraphicsContext gc) {
+        drawMaze2(gc);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 300 - 10, simulationCanvas.getHeight() / 2 - 200, 20, 310);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 300 - 10, simulationCanvas.getHeight() / 2 - 200 - 10, 110, 20);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 200 - 10, simulationCanvas.getHeight() / 2 - 200 - 10, 20, 110);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 200 - 10, simulationCanvas.getHeight() / 2 - 100 - 10, 110, 20);
+        gc.fillRect(simulationCanvas.getWidth() / 2 - 100 - 10, simulationCanvas.getHeight() / 2 - 200 - 10, 20, 120);
+    }
+
     private void redraw() {
         GraphicsContext gc = simulationCanvas.getGraphicsContext2D();
         gc.setImageSmoothing(true);
         gc.setFill(Color.rgb(0, 0, 50));
         gc.fillRect(0, 0, simulationCanvas.getWidth(), simulationCanvas.getHeight());
 
+        switch (mazeNumber) {
+            case 1 -> drawMaze1(gc);
+            case 2 -> drawMaze2(gc);
+            case 3 -> drawMaze3(gc);
+        }
+
         GraphicsContext grid = gridCanvas.getGraphicsContext2D();
         grid.clearRect(0, 0, gridCanvas.getWidth(), gridCanvas.getHeight());
         grid.setStroke(Color.gray(0.9));
-        for (int x = -1 + ((int) gridOffset.getX() % 100); x < gridCanvas.getWidth(); x += 100) {
+        for (int x = -1 + ((int) gridOffset.getX() % GRID_GAP); x < gridCanvas.getWidth(); x += GRID_GAP) {
             grid.strokeLine(x, 0, x, gridCanvas.getHeight());
         }
-        for (int y = -1 + ((int) gridOffset.getY() % 100); y < gridCanvas.getHeight(); y += 100) {
+        for (int y = -1 + ((int) gridOffset.getY() % GRID_GAP); y < gridCanvas.getHeight(); y += GRID_GAP) {
             grid.strokeLine(0, y, gridCanvas.getWidth(), y);
         }
+
+        grid.setFill(Color.WHITE);
+        grid.fillRect(0, 0, templateBlocksMaxX, templateBlocksMaxY);
 
         if (robot.isIdle()) {
             robot.setXPos(simulationCanvas.getWidth() / 2);
@@ -355,7 +435,9 @@ public class MainController implements Initializable {
 
     private CodeBlock addCodeBlock(CodeBlock codeBlock) {
         codeBlockMap.put(codeBlock.getFlowCommand(), codeBlock);
-        flow.addCommand(codeBlock.getFlowCommand());
+        if (codeBlock.getFlowCommand().getInstruction() != RobotInstruction.INIT) {
+            flow.addCommand(codeBlock.getFlowCommand());
+        }
         makeDraggable(codeBlock);
         graphicalStatements.getChildren().add(codeBlock);
 

@@ -1,23 +1,37 @@
 package dev.lukasfink.robotprogrammer.components;
 
 import dev.lukasfink.robotprogrammer.flow.RobotInstruction;
-import javafx.animation.RotateTransition;
-import javafx.animation.Transition;
-import javafx.animation.TranslateTransition;
+import javafx.animation.*;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
+import javafx.scene.Group;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class Robot extends ImageView {
+public class Robot extends Group {
 
     private static final int ROBOT_IMAGE_WIDTH = 150;
     private static final int ROBOT_IMAGE_HEIGHT = 150;
+
+    private static final int ROBOT_GROUP_WIDTH = 200;
+    private static final int ROBOT_GROUP_HEIGHT = 200;
+
+    private static final int ROBOT_TIRE_WIDTH = 64;
+    private static final int ROBOT_TIRE_HEIGHT = 64;
+
+    private static final int TIRE_IMAGE_COUNT = 30;
+
+    private static Image[] tires;
 
     private enum Direction {
         UP,
@@ -44,24 +58,77 @@ public class Robot extends ImageView {
 
     private State state;
 
+    private ImageView background;
+
+    private ImageView tireFL;
+    private ImageView tireFR;
+    private ImageView tireRL;
+    private ImageView tireRR;
+
+    private Timeline timelineFL;
+    private Timeline timelineFR;
+    private Timeline timelineRL;
+    private Timeline timelineRR;
+
     public Robot(Image robotImage) {
-        super(robotImage);
+        if (tires == null) {
+            tires = new Image[TIRE_IMAGE_COUNT];
+            for (int i = 0; i < TIRE_IMAGE_COUNT; i++) {
+                String filePath = String.format("tire%02d.png", i);
+                tires[i] = new Image(Objects.requireNonNull(getClass().getResourceAsStream(filePath)));
+            }
+        }
+
+        background = new ImageView(robotImage);
+        background.setFitWidth(ROBOT_IMAGE_WIDTH);
+        background.setFitHeight(ROBOT_IMAGE_HEIGHT);
+        background.setTranslateX(ROBOT_GROUP_WIDTH / 2f - ROBOT_IMAGE_WIDTH / 2f);
+        background.setTranslateY(ROBOT_GROUP_HEIGHT / 2f - ROBOT_IMAGE_HEIGHT / 2f);
+
+        getChildren().add(background);
+        tireFL = new ImageView(tires[0]);
+        timelineFL = new Timeline();
+        addTire(tireFL, timelineFL, 6, 32);
+        tireFR = new ImageView(tires[0]);
+        timelineFR = new Timeline();
+        addTire(tireFR, timelineFR, ROBOT_GROUP_WIDTH - ROBOT_TIRE_WIDTH - 6, 32);
+        tireRL = new ImageView(tires[0]);
+        timelineRL = new Timeline();
+        addTire(tireRL, timelineRL, 6, ROBOT_GROUP_HEIGHT - ROBOT_TIRE_HEIGHT - 32);
+        tireRR = new ImageView(tires[0]);
+        timelineRR = new Timeline();
+        addTire(tireRR, timelineRR, ROBOT_GROUP_WIDTH - ROBOT_TIRE_WIDTH - 6, ROBOT_GROUP_HEIGHT - ROBOT_TIRE_HEIGHT - 32);
 
         stateListeners = new LinkedList<>();
         commandQueue = new ConcurrentLinkedQueue<>();
         direction = Direction.UP;
         state = State.IDLE;
+    }
 
-        setFitWidth(ROBOT_IMAGE_WIDTH);
-        setFitHeight(ROBOT_IMAGE_HEIGHT);
+    private void addTire(final ImageView tire, Timeline timeline, double x, double y) {
+        getChildren().add(tire);
+
+        timeline.setCycleCount(Timeline.INDEFINITE);
+        Duration frameTime = Duration.ZERO;
+        for (int i = 0; i < TIRE_IMAGE_COUNT; i++) {
+            int finalI = i;
+            timeline.getKeyFrames().add(new KeyFrame(frameTime, event -> tire.setImage(tires[finalI])));
+            frameTime = frameTime.add(Duration.millis(10));
+        }
+
+        tire.setFitWidth(ROBOT_TIRE_WIDTH);
+        tire.setFitHeight(ROBOT_TIRE_HEIGHT);
+
+        tire.setLayoutX(x);
+        tire.setLayoutY(y);
     }
 
     public void setXPos(double x) {
-        setTranslateX(x - ROBOT_IMAGE_WIDTH / 2f);
+        setTranslateX(x - ROBOT_GROUP_WIDTH / 2f);
     }
 
     public void setYPos(double y) {
-        setTranslateY(y - ROBOT_IMAGE_HEIGHT / 2f);
+        setTranslateY(y - ROBOT_GROUP_HEIGHT / 2f);
     }
 
     public boolean isRunning() {
@@ -87,6 +154,7 @@ public class Robot extends ImageView {
     public void executeCommand(RobotInstruction command) {
         if (command == null) {
             changeState(State.IDLE);
+            startPosition = null;
             return;
         }
 
@@ -99,6 +167,10 @@ public class Robot extends ImageView {
     }
 
     private void triggerNextCommand() {
+        timelineFL.pause();
+        timelineFR.pause();
+        timelineRL.pause();
+        timelineRR.pause();
         executeCommand(commandQueue.poll());
     }
 
@@ -112,20 +184,29 @@ public class Robot extends ImageView {
     public void start() {
         resetPosition();
         changeState(State.RUNNING);
-        startPosition = new Point2D(getTranslateX() + ROBOT_IMAGE_WIDTH / 2f, getTranslateY() + ROBOT_IMAGE_HEIGHT / 2f);
+        startPosition = new Point2D(getTranslateX() + ROBOT_GROUP_WIDTH / 2f, getTranslateY() + ROBOT_GROUP_HEIGHT / 2f);
         triggerNextCommand();
     }
 
     public void stop() {
+        timelineFL.pause();
+        timelineFR.pause();
+        timelineRL.pause();
+        timelineRR.pause();
         currentTransition.stop();
         currentTransition = null;
         commandQueue.clear();
         resetPosition();
+        startPosition = null;
         changeState(State.IDLE);
     }
 
     public void pause() {
         if (currentTransition != null) {
+            timelineFL.pause();
+            timelineFR.pause();
+            timelineRL.pause();
+            timelineRR.pause();
             currentTransition.pause();
             changeState(State.PAUSED);
         }
@@ -133,24 +214,38 @@ public class Robot extends ImageView {
 
     public void resume() {
         if (currentTransition != null) {
+            timelineFL.play();
+            timelineFR.play();
+            timelineRL.play();
+            timelineRR.play();
             currentTransition.play();
             changeState(State.RUNNING);
         }
     }
 
     public void resetPosition() {
+        direction = Direction.UP;
+        setRotate(0);
+
         if (startPosition == null) {
             return;
         }
 
         setXPos(startPosition.getX());
         setYPos(startPosition.getY());
-        direction = Direction.UP;
-        setRotate(0);
     }
 
     private void forward() {
+        timelineFL.setRate(1);
+        timelineFL.play();
+        timelineFR.setRate(1);
+        timelineFR.play();
+        timelineRL.setRate(1);
+        timelineRL.play();
+        timelineRR.setRate(1);
+        timelineRR.play();
         currentTransition = new TranslateTransition(Duration.millis(2000), this);
+        currentTransition.setInterpolator(Interpolator.LINEAR);
         switch (direction) {
             case UP -> ((TranslateTransition) currentTransition).setByY(-100);
             case DOWN -> ((TranslateTransition) currentTransition).setByY(100);
@@ -162,7 +257,16 @@ public class Robot extends ImageView {
     }
 
     private void backwards() {
+        timelineFL.setRate(-1);
+        timelineFL.play();
+        timelineFR.setRate(-1);
+        timelineFR.play();
+        timelineRL.setRate(-1);
+        timelineRL.play();
+        timelineRR.setRate(-1);
+        timelineRR.play();
         currentTransition = new TranslateTransition(Duration.millis(2000), this);
+        currentTransition.setInterpolator(Interpolator.LINEAR);
         switch (direction) {
             case UP -> ((TranslateTransition) currentTransition).setByY(100);
             case DOWN -> ((TranslateTransition) currentTransition).setByY(-100);
@@ -174,7 +278,16 @@ public class Robot extends ImageView {
     }
 
     private void turnLeft() {
+        timelineFL.setRate(-1);
+        timelineFL.play();
+        timelineFR.setRate(1);
+        timelineFR.play();
+        timelineRL.setRate(-1);
+        timelineRL.play();
+        timelineRR.setRate(1);
+        timelineRR.play();
         currentTransition = new RotateTransition(Duration.millis(2000), this);
+        currentTransition.setInterpolator(Interpolator.LINEAR);
         ((RotateTransition) currentTransition).setByAngle(-90);
         currentTransition.setOnFinished(event -> {
             switch (direction) {
@@ -189,7 +302,16 @@ public class Robot extends ImageView {
     }
 
     private void turnRight() {
+        timelineFL.setRate(1);
+        timelineFL.play();
+        timelineFR.setRate(-1);
+        timelineFR.play();
+        timelineRL.setRate(1);
+        timelineRL.play();
+        timelineRR.setRate(-1);
+        timelineRR.play();
         currentTransition = new RotateTransition(Duration.millis(2000), this);
+        currentTransition.setInterpolator(Interpolator.LINEAR);
         ((RotateTransition) currentTransition).setByAngle(90);
         currentTransition.setOnFinished(event -> {
             switch (direction) {

@@ -15,9 +15,9 @@ import java.util.Objects;
 
 public class CodeBlock extends StackPane {
 
-    public static final double SIZE_WIDTH = 386;
-    public static final double SIZE_HEIGHT = 86.5;
-    public static final double SPACING = -15;
+    public static final double SIZE_WIDTH = 289.5;
+    public static final double SIZE_HEIGHT = 64.875;
+    public static final double SPACING = -10;
 
     private static final Color COLOR_COMPLETE = Color.rgb(0, 192, 15);
     private static final Color COLOR_INCOMPLETE = Color.rgb(200, 150, 0);
@@ -51,7 +51,7 @@ public class CodeBlock extends StackPane {
 
         Label label = new Label(Translator.translate(flowCommand.getInstructionText()).toUpperCase());
         label.setPrefSize(SIZE_WIDTH, SIZE_HEIGHT);
-        label.setStyle("-fx-font-size: 25; -fx-text-fill: GREY");
+        label.setStyle("-fx-font-size: 18; -fx-text-fill: GREY");
         label.setAlignment(Pos.CENTER);
         StackPane.setAlignment(label, Pos.CENTER);
 

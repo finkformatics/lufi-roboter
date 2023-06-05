@@ -23,6 +23,8 @@ public class Flow {
 
     public void reset() {
         commands.clear();
+        commands.add(startCommand);
+        startCommand.setNext(null);
     }
 
     public void addCommand(FlowCommand command) {
