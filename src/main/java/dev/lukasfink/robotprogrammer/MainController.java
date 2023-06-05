@@ -160,7 +160,7 @@ public class MainController implements Initializable {
 
         graphicalStatements.getChildren().addAll(templateBlocks);
 
-        trashArea = new FontIcon("mdsal-delete:256:RED");
+        trashArea = new FontIcon("mdral-delete:256:RED");
         graphicalStatements.getChildren().add(trashArea);
         AnchorPane.setBottomAnchor(trashArea, 100d);
         AnchorPane.setLeftAnchor(trashArea, 0.0);
