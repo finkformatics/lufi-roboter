@@ -34,4 +34,16 @@ public enum RobotInstruction {
         return nextAllowed;
     }
 
+    public static RobotInstruction byValue(String value) {
+        return switch (value) {
+            case "init" -> RobotInstruction.INIT;
+            case "forward" -> RobotInstruction.FORWARD;
+            case "backwards" -> RobotInstruction.BACKWARDS;
+            case "turn_left" -> RobotInstruction.TURN_LEFT;
+            case "turn_right" -> RobotInstruction.TURN_RIGHT;
+            case "terminate" -> RobotInstruction.TERMINATE;
+            default -> throw new RuntimeException("Unknown instruction: " + value);
+        };
+    }
+
 }

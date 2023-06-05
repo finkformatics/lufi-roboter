@@ -21,16 +21,16 @@ public class Flow {
         return startCommand;
     }
 
+    public void reset() {
+        commands.clear();
+    }
+
     public void addCommand(FlowCommand command) {
         commands.add(command);
     }
 
     public void removeCommand(FlowCommand command) {
         commands.remove(command);
-    }
-
-    public FlowCommand[] getCommands() {
-        return commands.toArray(new FlowCommand[0]);
     }
 
     public String generateSourceCode() {

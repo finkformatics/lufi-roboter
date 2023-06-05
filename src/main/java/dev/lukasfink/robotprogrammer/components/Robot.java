@@ -32,9 +32,9 @@ public class Robot extends ImageView {
         PAUSED
     }
 
-    private List<RobotStateListener> stateListeners;
+    private final List<RobotStateListener> stateListeners;
 
-    private Queue<RobotInstruction> commandQueue;
+    private final Queue<RobotInstruction> commandQueue;
 
     private Direction direction;
 
@@ -78,10 +78,6 @@ public class Robot extends ImageView {
 
     public void addStateListener(RobotStateListener listener) {
         stateListeners.add(listener);
-    }
-
-    public void removeStateListener(RobotStateListener listener) {
-        stateListeners.remove(listener);
     }
 
     public void addCommand(RobotInstruction command) {

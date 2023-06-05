@@ -5,6 +5,8 @@ import dev.lukasfink.robotprogrammer.components.Robot;
 import dev.lukasfink.robotprogrammer.flow.Flow;
 import dev.lukasfink.robotprogrammer.flow.FlowCommand;
 import dev.lukasfink.robotprogrammer.flow.RobotInstruction;
+import dev.lukasfink.robotprogrammer.io.ExportedCodeBlock;
+import dev.lukasfink.robotprogrammer.io.IOHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -23,7 +25,11 @@ import javafx.stage.FileChooser;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 public class MainController implements Initializable {
@@ -67,15 +73,22 @@ public class MainController implements Initializable {
     @FXML
     private MenuItem aboutMenuItem;
 
+    private static final HashMap<String, String> instructionImageMap = new HashMap<>();
+    static {
+        instructionImageMap.put("forward", "code_block_stmt.png");
+        instructionImageMap.put("backwards", "code_block_stmt.png");
+        instructionImageMap.put("turn_left", "code_block_stmt.png");
+        instructionImageMap.put("turn_right", "code_block_stmt.png");
+        instructionImageMap.put("terminate", "code_block_end.png");
+        instructionImageMap.put("init", "code_block_start.png");
+    }
+
     private final HashMap<FlowCommand, CodeBlock> codeBlockMap;
 
-    private Flow flow;
+    private final Flow flow;
 
     private final AudioClip selectClip;
     private final AudioClip dropClip;
-
-    private int templateBlocksMaxX;
-    private int templateBlocksMaxY;
 
     private CodeBlock newBlock;
 
@@ -83,20 +96,21 @@ public class MainController implements Initializable {
 
     private FontIcon playIcon;
     private FontIcon pauseIcon;
-    private FontIcon stopIcon;
 
-    private Robot robot;
+    private final Robot robot;
 
     private Point2D gridOffset;
     private Point2D gridDragStart;
 
+    private int templateBlocksMaxX;
+
     public MainController() {
         flow = new Flow();
         codeBlockMap = new HashMap<>();
-        robot = new Robot(new Image(getClass().getResourceAsStream("balloon_robot.png")));
+        robot = new Robot(new Image(Objects.requireNonNull(getClass().getResourceAsStream("balloon_robot.png"))));
 
-        selectClip = new AudioClip(getClass().getResource("select.wav").toString());
-        dropClip = new AudioClip(getClass().getResource("drop.wav").toString());
+        selectClip = new AudioClip(Objects.requireNonNull(getClass().getResource("select.wav")).toString());
+        dropClip = new AudioClip(Objects.requireNonNull(getClass().getResource("drop.wav")).toString());
 
         gridOffset = new Point2D(0, 0);
     }
@@ -104,11 +118,11 @@ public class MainController implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
         CodeBlock[] templateBlocks = new CodeBlock[]{
-                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.FORWARD)),
-                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.BACKWARDS)),
-                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.TURN_RIGHT)),
-                new CodeBlock("code_block_stmt.png", new FlowCommand(RobotInstruction.TURN_LEFT)),
-                new CodeBlock("code_block_end.png", new FlowCommand(RobotInstruction.TERMINATE)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.FORWARD.getValue()), new FlowCommand(RobotInstruction.FORWARD)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.BACKWARDS.getValue()), new FlowCommand(RobotInstruction.BACKWARDS)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.TURN_RIGHT.getValue()), new FlowCommand(RobotInstruction.TURN_RIGHT)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.TURN_LEFT.getValue()), new FlowCommand(RobotInstruction.TURN_LEFT)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.TERMINATE.getValue()), new FlowCommand(RobotInstruction.TERMINATE)),
         };
 
         for (int i = 0; i < templateBlocks.length; i++) {
@@ -118,9 +132,9 @@ public class MainController implements Initializable {
         }
 
         templateBlocksMaxX = 10 + (int) CodeBlock.SIZE_WIDTH + 10;
-        templateBlocksMaxY = 10 + templateBlocks.length * (int) CodeBlock.SIZE_HEIGHT + 10;
+//        int templateBlocksMaxY = 10 + templateBlocks.length * (int) CodeBlock.SIZE_HEIGHT + 10;
 
-        CodeBlock startBlock = addCodeBlock(new CodeBlock("code_block_start.png", flow.getStartCommand()));
+        CodeBlock startBlock = addCodeBlock(new CodeBlock(instructionImageMap.get(RobotInstruction.INIT.getValue()), flow.getStartCommand()));
         startBlock.setLayoutX(templateBlocksMaxX + 150);
         startBlock.setLayoutY(50);
 
@@ -174,7 +188,7 @@ public class MainController implements Initializable {
 
         playIcon = new FontIcon("mdmz-play_arrow:56:GREEN");
         pauseIcon = new FontIcon("mdomz-pause:56:GREY");
-        stopIcon = new FontIcon("mdrmz-stop:56:RED");
+        FontIcon stopIcon = new FontIcon("mdrmz-stop:56:RED");
         playButton.setGraphic(playIcon);
         playButton.setDisable(true);
         playButton.setOnAction(event -> {
@@ -226,7 +240,7 @@ public class MainController implements Initializable {
         });
 
         newMenuItem.setOnAction(event -> {
-            // TODO: reset flow and statements
+            reset(true);
         });
 
         openMenuItem.setOnAction(event -> {
@@ -234,7 +248,27 @@ public class MainController implements Initializable {
             fileChooser.setInitialDirectory(new File(System.getProperty("user.home")));
             fileChooser.setTitle("Roboteranweisungen laden");
             fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Roboteranweisungen", "*.rbt"));
-            fileChooser.showOpenDialog(graphicalStatements.getScene().getWindow());
+            File chosenFile = fileChooser.showOpenDialog(graphicalStatements.getScene().getWindow());
+            if (chosenFile != null) {
+                try {
+                    String json = Files.readString(chosenFile.toPath(), StandardCharsets.UTF_8);
+                    List<ExportedCodeBlock> exportedCodeBlocks = IOHelper.translateToStatements(json);
+                    reset(false);
+                    for (ExportedCodeBlock exportedCodeBlock: exportedCodeBlocks) {
+                        newBlock = addCodeBlock(
+                                new CodeBlock(
+                                        instructionImageMap.get(exportedCodeBlock.getInstruction()),
+                                        RobotInstruction.INIT.getValue().equals(exportedCodeBlock.getInstruction()) ? flow.getStartCommand() : new FlowCommand(RobotInstruction.byValue(exportedCodeBlock.getInstruction()))
+                                )
+                        );
+                        newBlock.setLayoutX(exportedCodeBlock.getPosX());
+                        newBlock.setLayoutY(exportedCodeBlock.getPosY());
+                        checkIntersection(newBlock);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         });
 
         saveMenuItem.setOnAction(event -> {
@@ -243,7 +277,15 @@ public class MainController implements Initializable {
             fileChooser.setInitialFileName("anweisungen.rbt");
             fileChooser.setTitle("Roboteranweisungen speichern");
             fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Roboteranweisungen", "*.rbt"));
-            fileChooser.showSaveDialog(graphicalStatements.getScene().getWindow());
+            File chosenFile = fileChooser.showSaveDialog(graphicalStatements.getScene().getWindow());
+            if (chosenFile != null) {
+                String json = IOHelper.translateToJson(codeBlockMap);
+                try {
+                    Files.writeString(chosenFile.toPath(), json, StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         });
 
         new Thread(() -> {
@@ -256,6 +298,23 @@ public class MainController implements Initializable {
                 throw new RuntimeException(e);
             }
         }).start();
+    }
+
+    private void reset(boolean createStartBlock) {
+        for (CodeBlock codeBlock: codeBlockMap.values()) {
+            graphicalStatements.getChildren().remove(codeBlock);
+        }
+
+        codeBlockMap.clear();
+        flow.reset();
+        gridOffset = new Point2D(0, 0);
+        redraw();
+
+        if (createStartBlock) {
+            CodeBlock startBlock = addCodeBlock(new CodeBlock(instructionImageMap.get(RobotInstruction.INIT.getValue()), flow.getStartCommand()));
+            startBlock.setLayoutX(templateBlocksMaxX + 150);
+            startBlock.setLayoutY(50);
+        }
     }
 
     private void updateSourceCode() {
@@ -292,10 +351,6 @@ public class MainController implements Initializable {
             robot.setXPos(simulationCanvas.getWidth() / 2);
             robot.setYPos(simulationCanvas.getHeight() / 2);
         }
-    }
-
-    private Point2D calculateFieldCenter() {
-        return new Point2D(simulationCanvas.getWidth() / 2, simulationCanvas.getHeight() / 2);
     }
 
     private CodeBlock addCodeBlock(CodeBlock codeBlock) {
@@ -362,6 +417,91 @@ public class MainController implements Initializable {
         });
     }
 
+    private void checkIntersection(CodeBlock codeBlockNode) {
+        boolean intersects = false;
+        HashSet<CodeBlock> blockedBlocks = new HashSet<>();
+        blockedBlocks.add(codeBlockNode);
+        CodeBlock referenceBlock = codeBlockNode;
+        if (codeBlockNode.getFlowCommand() == flow.getStartCommand()) {
+            FlowCommand currentCommand = flow.getStartCommand();
+            while (currentCommand.hasNext()) {
+                currentCommand = currentCommand.getNext();
+                referenceBlock = codeBlockMap.get(currentCommand);
+                blockedBlocks.add(referenceBlock);
+            }
+        }
+
+        for (CodeBlock codeBlock: codeBlockMap.values()) {
+            if (blockedBlocks.contains(codeBlock)) {
+                continue;
+            }
+
+            if (referenceBlock.getBoundsInParent().intersects(codeBlock.getBoundsInParent())) {
+                intersects = true;
+                if (codeBlockNode.getFlowCommand() != flow.getStartCommand() && referenceBlock.getLayoutY() > codeBlock.getLayoutY() && referenceBlock.getFlowCommand().getInstruction().isPreviousAllowed() && codeBlock.getFlowCommand().getInstruction().isNextAllowed() && !referenceBlock.getFlowCommand().hasPrevious() && !codeBlock.getFlowCommand().hasNext()) {
+                    referenceBlock.setLayoutX(codeBlock.getLayoutX());
+                    referenceBlock.setLayoutY(codeBlock.getLayoutY() + CodeBlock.SIZE_HEIGHT + CodeBlock.SPACING);
+                    codeBlock.getFlowCommand().setNext(referenceBlock.getFlowCommand());
+                    referenceBlock.getFlowCommand().setPrevious(codeBlock.getFlowCommand());
+                } else if (referenceBlock.getFlowCommand().getInstruction().isNextAllowed() && codeBlock.getFlowCommand().getInstruction().isPreviousAllowed() && !referenceBlock.getFlowCommand().hasNext() && !codeBlock.getFlowCommand().hasPrevious()) {
+                    referenceBlock.setLayoutX(codeBlock.getLayoutX());
+                    referenceBlock.setLayoutY(codeBlock.getLayoutY() - CodeBlock.SIZE_HEIGHT - CodeBlock.SPACING);
+                    codeBlock.getFlowCommand().setPrevious(referenceBlock.getFlowCommand());
+                    referenceBlock.getFlowCommand().setNext(codeBlock.getFlowCommand());
+
+                    if (codeBlockNode.getFlowCommand() == flow.getStartCommand()) {
+                        int distanceCounter = 0;
+                        CodeBlock currentBlock = referenceBlock;
+                        FlowCommand currentCommand = referenceBlock.getFlowCommand();
+                        while (currentCommand.hasPrevious()) {
+                            currentCommand = currentCommand.getPrevious();
+                            currentBlock = codeBlockMap.get(currentCommand);
+                            distanceCounter++;
+                            currentBlock.setLayoutX(referenceBlock.getLayoutX());
+                            currentBlock.setLayoutY(referenceBlock.getLayoutY() - distanceCounter * (CodeBlock.SIZE_HEIGHT + CodeBlock.SPACING));
+                        }
+                    }
+                } else {
+                    codeBlockNode.setLayoutX(codeBlockNode.getDragOriginX());
+                    codeBlockNode.setLayoutY(codeBlockNode.getDragOriginY());
+                }
+
+                updateSourceCode();
+            }
+        }
+
+        if (!intersects && codeBlockNode.getFlowCommand() != flow.getStartCommand()) {
+            if (codeBlockNode.getFlowCommand().hasNext()) {
+                FlowCommand next = codeBlockNode.getFlowCommand().getNext();
+                next.setPrevious(null);
+                codeBlockNode.getFlowCommand().setNext(null);
+            }
+
+            if (codeBlockNode.getFlowCommand().hasPrevious()) {
+                FlowCommand previous = codeBlockNode.getFlowCommand().getPrevious();
+                previous.setNext(null);
+                codeBlockNode.getFlowCommand().setPrevious(null);
+            }
+        } else if (codeBlockNode.getFlowCommand() != flow.getStartCommand()) {
+            if (codeBlockNode.getFlowCommand().hasNext() && !codeBlockNode.getBoundsInParent().intersects(codeBlockMap.get(codeBlockNode.getFlowCommand().getNext()).getBoundsInParent())) {
+                FlowCommand next = codeBlockNode.getFlowCommand().getNext();
+                next.setPrevious(null);
+                codeBlockNode.getFlowCommand().setNext(null);
+            }
+
+            if (codeBlockNode.getFlowCommand().hasPrevious() && !codeBlockNode.getBoundsInParent().intersects(codeBlockMap.get(codeBlockNode.getFlowCommand().getPrevious()).getBoundsInParent())) {
+                FlowCommand previous = codeBlockNode.getFlowCommand().getPrevious();
+                previous.setNext(null);
+                codeBlockNode.getFlowCommand().setPrevious(null);
+            }
+        }
+
+        flow.updateStates();
+        updateLooks();
+
+        playButton.setDisable(flow.getStartCommand().getState() != FlowCommand.State.COMPLETE);
+    }
+
     private void makeDraggable(CodeBlock codeBlockNode) {
         codeBlockNode.setOnMousePressed(mouseEvent -> {
             if (mouseEvent.isMiddleButtonDown()) {
@@ -379,93 +519,8 @@ public class MainController implements Initializable {
             }
 
             dropClip.play();
-            boolean intersects = false;
 
-            HashSet<CodeBlock> blockedBlocks = new HashSet<>();
-            blockedBlocks.add(codeBlockNode);
-            CodeBlock referenceBlock = codeBlockNode;
-            if (codeBlockNode.getFlowCommand() == flow.getStartCommand()) {
-                FlowCommand currentCommand = flow.getStartCommand();
-                while (currentCommand.hasNext()) {
-                    currentCommand = currentCommand.getNext();
-                    referenceBlock = codeBlockMap.get(currentCommand);
-                    blockedBlocks.add(referenceBlock);
-                }
-            }
-
-            for (CodeBlock codeBlock: codeBlockMap.values()) {
-                if (blockedBlocks.contains(codeBlock)) {
-                    continue;
-                }
-
-                if (referenceBlock.getBoundsInParent().intersects(codeBlock.getBoundsInParent())) {
-                    intersects = true;
-                    if (codeBlockNode.getFlowCommand() != flow.getStartCommand() && referenceBlock.getLayoutY() > codeBlock.getLayoutY() && referenceBlock.getFlowCommand().getInstruction().isPreviousAllowed() && codeBlock.getFlowCommand().getInstruction().isNextAllowed() && !referenceBlock.getFlowCommand().hasPrevious() && !codeBlock.getFlowCommand().hasNext()) {
-                        referenceBlock.setLayoutX(codeBlock.getLayoutX());
-                        referenceBlock.setLayoutY(codeBlock.getLayoutY() + CodeBlock.SIZE_HEIGHT + CodeBlock.SPACING);
-                        codeBlock.getFlowCommand().setNext(referenceBlock.getFlowCommand());
-                        referenceBlock.getFlowCommand().setPrevious(codeBlock.getFlowCommand());
-                    } else if (referenceBlock.getFlowCommand().getInstruction().isNextAllowed() && codeBlock.getFlowCommand().getInstruction().isPreviousAllowed() && !referenceBlock.getFlowCommand().hasNext() && !codeBlock.getFlowCommand().hasPrevious()) {
-                        referenceBlock.setLayoutX(codeBlock.getLayoutX());
-                        referenceBlock.setLayoutY(codeBlock.getLayoutY() - CodeBlock.SIZE_HEIGHT - CodeBlock.SPACING);
-                        codeBlock.getFlowCommand().setPrevious(referenceBlock.getFlowCommand());
-                        referenceBlock.getFlowCommand().setNext(codeBlock.getFlowCommand());
-
-                        if (codeBlockNode.getFlowCommand() == flow.getStartCommand()) {
-                            int distanceCounter = 0;
-                            CodeBlock currentBlock = referenceBlock;
-                            FlowCommand currentCommand = referenceBlock.getFlowCommand();
-                            while (currentCommand.hasPrevious()) {
-                                currentCommand = currentCommand.getPrevious();
-                                currentBlock = codeBlockMap.get(currentCommand);
-                                distanceCounter++;
-                                currentBlock.setLayoutX(referenceBlock.getLayoutX());
-                                currentBlock.setLayoutY(referenceBlock.getLayoutY() - distanceCounter * (CodeBlock.SIZE_HEIGHT + CodeBlock.SPACING));
-                            }
-                        }
-                    } else {
-                        codeBlockNode.setLayoutX(codeBlockNode.getDragOriginX());
-                        codeBlockNode.setLayoutY(codeBlockNode.getDragOriginY());
-                    }
-
-                    updateSourceCode();
-                }
-            }
-
-            if (!intersects && codeBlockNode.getFlowCommand() != flow.getStartCommand()) {
-                if (codeBlockNode.getFlowCommand().hasNext()) {
-                    FlowCommand next = codeBlockNode.getFlowCommand().getNext();
-                    next.setPrevious(null);
-                    codeBlockNode.getFlowCommand().setNext(null);
-                }
-
-                if (codeBlockNode.getFlowCommand().hasPrevious()) {
-                    FlowCommand previous = codeBlockNode.getFlowCommand().getPrevious();
-                    previous.setNext(null);
-                    codeBlockNode.getFlowCommand().setPrevious(null);
-                }
-            } else if (codeBlockNode.getFlowCommand() != flow.getStartCommand()) {
-                if (codeBlockNode.getFlowCommand().hasNext() && !codeBlockNode.getBoundsInParent().intersects(codeBlockMap.get(codeBlockNode.getFlowCommand().getNext()).getBoundsInParent())) {
-                    FlowCommand next = codeBlockNode.getFlowCommand().getNext();
-                    next.setPrevious(null);
-                    codeBlockNode.getFlowCommand().setNext(null);
-                }
-
-                if (codeBlockNode.getFlowCommand().hasPrevious() && !codeBlockNode.getBoundsInParent().intersects(codeBlockMap.get(codeBlockNode.getFlowCommand().getPrevious()).getBoundsInParent())) {
-                    FlowCommand previous = codeBlockNode.getFlowCommand().getPrevious();
-                    previous.setNext(null);
-                    codeBlockNode.getFlowCommand().setPrevious(null);
-                }
-            }
-
-            flow.updateStates();
-            updateLooks();
-
-            if (flow.getStartCommand().getState() == FlowCommand.State.COMPLETE) {
-                playButton.setDisable(false);
-            } else {
-                playButton.setDisable(true);
-            }
+            checkIntersection(codeBlockNode);
 
             trashArea.setIconColor(Color.RED);
 

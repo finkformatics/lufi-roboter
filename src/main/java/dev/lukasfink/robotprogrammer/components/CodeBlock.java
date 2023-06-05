@@ -11,6 +11,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 
+import java.util.Objects;
+
 public class CodeBlock extends StackPane {
 
     public static final double SIZE_WIDTH = 386;
@@ -21,24 +23,22 @@ public class CodeBlock extends StackPane {
     private static final Color COLOR_INCOMPLETE = Color.rgb(200, 150, 0);
     private static final Color COLOR_WITHOUT_CONNECTIONS = Color.rgb(200, 80, 30);
 
-    private FlowCommand flowCommand;
+    private final FlowCommand flowCommand;
 
-    private final Image image;
     private final ImageView imageView;
-    private final Label label;
 
     private Point2D dragDelta = new Point2D(0, 0);
     private Point2D dragOrigin = new Point2D(0, 0);
 
     private boolean hovered;
 
-    private String imgPath;
+    private final String imgPath;
 
     public CodeBlock(String imgPath, FlowCommand flowCommand) {
         this.imgPath = imgPath;
         this.flowCommand = flowCommand;
 
-        image = new Image(getClass().getResourceAsStream(imgPath));
+        Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream(imgPath)));
         imageView = new ImageView(image);
         imageView.setLayoutX(0);
         imageView.setLayoutY(0);
@@ -49,7 +49,7 @@ public class CodeBlock extends StackPane {
 
         getChildren().add(imageView);
 
-        label = new Label(Translator.translate(flowCommand.getInstructionText()).toUpperCase());
+        Label label = new Label(Translator.translate(flowCommand.getInstructionText()).toUpperCase());
         label.setPrefSize(SIZE_WIDTH, SIZE_HEIGHT);
         label.setStyle("-fx-font-size: 25; -fx-text-fill: GREY");
         label.setAlignment(Pos.CENTER);
@@ -120,4 +120,5 @@ public class CodeBlock extends StackPane {
     private static double map(double value, double start, double stop, double targetStart, double targetStop) {
         return targetStart + (targetStop - targetStart) * ((value - start) / (stop - start));
     }
+
 }

@@ -2,7 +2,7 @@ package dev.lukasfink.robotprogrammer.flow;
 
 public class FlowCommand {
 
-    public static enum State {
+    public enum State {
         COMPLETE,
         INCOMPLETE,
         WITHOUT_CONNECTIONS
@@ -52,22 +52,6 @@ public class FlowCommand {
 
     public void setState(State state) {
         this.state = state;
-    }
-
-    public FlowCommand tail() {
-        if (next != null) {
-            return next.tail();
-        }
-
-        return this;
-    }
-
-    public FlowCommand head() {
-        if (previous != null) {
-            return previous.head();
-        }
-
-        return this;
     }
 
     public String getInstructionText() {
