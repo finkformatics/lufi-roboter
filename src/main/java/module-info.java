@@ -5,6 +5,7 @@ module dev.lukafink.robotprogrammer {
 
     requires org.controlsfx.controls;
     requires org.kordamp.ikonli.javafx;
+    requires org.kordamp.ikonli.material2;
     requires com.google.gson;
 
     opens dev.lukasfink.robotprogrammer to javafx.fxml;
