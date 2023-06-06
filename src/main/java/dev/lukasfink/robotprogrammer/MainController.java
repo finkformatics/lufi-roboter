@@ -2,6 +2,7 @@ package dev.lukasfink.robotprogrammer;
 
 import dev.lukasfink.robotprogrammer.components.CodeBlock;
 import dev.lukasfink.robotprogrammer.components.Robot;
+import dev.lukasfink.robotprogrammer.components.TransferDialogController;
 import dev.lukasfink.robotprogrammer.flow.Flow;
 import dev.lukasfink.robotprogrammer.flow.FlowCommand;
 import dev.lukasfink.robotprogrammer.flow.RobotInstruction;
@@ -9,9 +10,12 @@ import dev.lukasfink.robotprogrammer.io.ExportedCodeBlock;
 import dev.lukasfink.robotprogrammer.io.IOHelper;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
@@ -22,6 +26,8 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
@@ -323,6 +329,8 @@ public class MainController implements Initializable {
             redraw();
         });
 
+        transferMenuItem.setOnAction(event -> openTransferDialog());
+
         aboutMenuItem.setOnAction(event -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Über");
@@ -341,6 +349,24 @@ public class MainController implements Initializable {
                 throw new RuntimeException(e);
             }
         }).start();
+    }
+
+    void openTransferDialog() {
+        FXMLLoader fxmlLoader = new FXMLLoader(TransferDialogController.class.getResource("transfer-dialog.fxml"));
+        try {
+            Parent parent = fxmlLoader.load();
+            TransferDialogController dialogController = fxmlLoader.getController();
+            dialogController.setFlow(flow);
+
+            Scene scene = new Scene(parent, 300, 200);
+            Stage stage = new Stage();
+            stage.setTitle("Programm transferieren");
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.setScene(scene);
+            stage.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void reset(boolean createStartBlock) {
@@ -653,6 +679,8 @@ public class MainController implements Initializable {
         for (CodeBlock codeBlock: codeBlockMap.values()) {
             codeBlock.updateLook();
         }
+
+        transferMenuItem.setDisable(flow.getStartCommand().getState() != FlowCommand.State.COMPLETE);
     }
 
 }

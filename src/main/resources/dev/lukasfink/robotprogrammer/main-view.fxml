@@ -32,7 +32,7 @@
                         <RadioMenuItem fx:id="maze2MenuItem" mnemonicParsing="false" text="Labyrinth 2" toggleGroup="$mazeNumber" />
                         <RadioMenuItem fx:id="maze3MenuItem" mnemonicParsing="false" text="Labyrinth 3" toggleGroup="$mazeNumber" />
                         <SeparatorMenuItem mnemonicParsing="false" />
-                        <MenuItem fx:id="transferMenuItem" mnemonicParsing="false" text="Programm übertragen" />
+                        <MenuItem fx:id="transferMenuItem" disable="true" mnemonicParsing="false" text="Programm übertragen" />
                     </items>
                   </Menu>
                 <Menu mnemonicParsing="false" text="Hilfe">

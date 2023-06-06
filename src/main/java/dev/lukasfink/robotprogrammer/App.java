@@ -17,6 +17,7 @@ public class App extends Application {
         Scene scene = new Scene(fxmlLoader.load(), 1920, 1080);
         stage.setTitle("Robotersteuerung V" + App.VERSION);
         stage.setScene(scene);
+        stage.setMaximized(true);
         stage.show();
     }
 

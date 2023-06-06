@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="dev.lukasfink.robotprogrammer.components.TransferDialogController">
+   <center>
+      <SplitMenuButton fx:id="comPortMenuButton" disable="true" mnemonicParsing="false" text="Lade ..." BorderPane.alignment="CENTER">
+      </SplitMenuButton>
+   </center>
+   <padding>
+      <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+   </padding>
+   <bottom>
+      <ButtonBar prefHeight="40.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+        <buttons>
+            <Button fx:id="cancelButton" cancelButton="true" mnemonicParsing="false" text="Abbrechen" />
+          <Button fx:id="transferButton" disable="true" mnemonicParsing="false" text="Transferieren" />
+        </buttons>
+      </ButtonBar>
+   </bottom>
+</BorderPane>
