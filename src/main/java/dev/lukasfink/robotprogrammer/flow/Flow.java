@@ -27,6 +27,17 @@ public class Flow {
         startCommand.setNext(null);
     }
 
+    public int count() {
+        FlowCommand currentCommand = getStartCommand();
+        int counter = 1;
+        while (currentCommand.hasNext()) {
+            currentCommand = currentCommand.getNext();
+            counter += 1;
+        }
+
+        return counter;
+    }
+
     public void addCommand(FlowCommand command) {
         commands.add(command);
     }

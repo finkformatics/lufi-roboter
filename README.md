@@ -7,3 +7,4 @@ Hier entsteht eine Software für Schüler, mit deren Hilfe sie die Bewegungsabl�
 - Z Index von Statements falsch
 - Verschiedene kleinere Komponenten einführen
 - Error handling and alerting
+- In EEPROM speichern
