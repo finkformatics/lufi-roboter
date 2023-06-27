@@ -168,7 +168,7 @@ public class MainController implements Initializable {
 
         trashArea = new FontIcon("mdral-delete:256:RED");
         graphicalStatements.getChildren().add(trashArea);
-        AnchorPane.setBottomAnchor(trashArea, 100d);
+        AnchorPane.setTopAnchor(trashArea, templateBlocksMaxY + 20.0);
         AnchorPane.setLeftAnchor(trashArea, 0.0);
 
         graphicalStatements.setOnMousePressed(event -> {
