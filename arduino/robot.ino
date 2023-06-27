@@ -12,13 +12,13 @@ int start_button = 18;
 int motors_left_forward = 6;
 int motors_left_backwards = 5;
 
-int motors_right_forward = 9;
-int motors_right_backwards = 10;
+int motors_right_forward = 10;
+int motors_right_backwards = 9;
 
-int led_forward = 15;
+int led_forward = 7;
 int led_backwards = 19;
-int led_left = 8;
-int led_right = 7;
+int led_left = 15;
+int led_right = 8;
 
 int poti_straight = 16;
 int poti_turning = 17;
@@ -27,8 +27,8 @@ int buzzer = 14;
 
 // HELPER VARIABLES
 int button_status = 0;
-int straight_speed = 180;
-int turning_speed = 210;
+int straight_speed = 90;
+int turning_speed = 120;
 int poti_straight_value = 0;
 int poti_turning_value = 0;
 float straight_percent = 0;
@@ -79,7 +79,6 @@ void right_stop() {
 }
 
 void forward(int millis) {
-  tone(buzzer, NOTE_C4, 1000);
   left_forward(straight_speed);
   right_forward(straight_speed);
   digitalWrite(led_forward, HIGH);
@@ -90,7 +89,6 @@ void forward(int millis) {
 }
 
 void backwards(int millis) {
-  tone(buzzer, NOTE_A3, 1000);
   left_backwards(straight_speed);
   right_backwards(straight_speed);
   digitalWrite(led_backwards, HIGH);
@@ -101,7 +99,6 @@ void backwards(int millis) {
 }
 
 void turn_left(int millis) {
-  tone(buzzer, NOTE_D4, 1000);
   left_forward(turning_speed);
   right_backwards(turning_speed);
   digitalWrite(led_left, HIGH);
@@ -112,7 +109,6 @@ void turn_left(int millis) {
 }
 
 void turn_right(int millis) {
-  tone(buzzer, NOTE_G3, 1000);
   left_backwards(turning_speed);
   right_forward(turning_speed);
   digitalWrite(led_right, HIGH);
@@ -185,8 +181,8 @@ void loop() {
   straight_percent = constrain((float) poti_straight_value / 1000, 0.1, 0.9);
   turning_percent = constrain((float) poti_turning_value / 1000, 0.1, 0.9);
 
-  straight_millis = (int) (straight_percent * 10000);
-  turning_millis = (int) (turning_percent * 6000);
+  straight_millis = (int) (straight_percent * 5000);
+  turning_millis = (int) (turning_percent * 3000);
 
   if (Serial.available() > 0) {
     String command = Serial.readString();
