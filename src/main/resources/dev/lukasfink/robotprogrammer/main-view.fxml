@@ -79,6 +79,8 @@
                      <children>
                         <ButtonBar prefHeight="40.0" prefWidth="200.0">
                           <buttons>
+                              <Button fx:id="zoomOutButton" mnemonicParsing="false" visible="false" />
+                              <Button fx:id="zoomInButton" mnemonicParsing="false" visible="false" />
                               <ToggleButton fx:id="playButton" mnemonicParsing="false" textAlignment="CENTER" />
                               <Button fx:id="stopButton" mnemonicParsing="false" />
                           </buttons>

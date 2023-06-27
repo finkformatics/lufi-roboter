@@ -21,6 +21,19 @@ public class Flow {
         return startCommand;
     }
 
+    public boolean isComplete() {
+        FlowCommand currentCommand = getStartCommand();
+        while (currentCommand.hasNext()) {
+            if (currentCommand.getState() != FlowCommand.State.COMPLETE) {
+                return false;
+            }
+
+            currentCommand = currentCommand.getNext();
+        }
+
+        return true;
+    }
+
     public void reset() {
         commands.clear();
         commands.add(startCommand);
@@ -78,7 +91,7 @@ public class Flow {
 
             boolean connectsToEnd = currentCommand.getInstruction() == RobotInstruction.TERMINATE;
 
-            if (connectsToStart && connectsToEnd) {
+            if (connectsToStart && connectsToEnd && command.isComplete()) {
                 command.setState(FlowCommand.State.COMPLETE);
             } else if (connectsToStart) {
                 command.setState(FlowCommand.State.INCOMPLETE);

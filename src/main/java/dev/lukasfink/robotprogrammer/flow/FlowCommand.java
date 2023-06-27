@@ -58,4 +58,8 @@ public class FlowCommand {
         return "${instruction." + instruction.getValue() + "}";
     }
 
+    public boolean isComplete() {
+        return true;
+    }
+
 }

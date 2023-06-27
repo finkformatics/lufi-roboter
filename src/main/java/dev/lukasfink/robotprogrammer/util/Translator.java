@@ -15,6 +15,8 @@ public class Translator {
         translations.put("instruction.turn_left", "Links");
         translations.put("instruction.turn_right", "Rechts");
         translations.put("instruction.terminate", "Ende");
+        translations.put("instruction.melody", "Melodie");
+        translations.put("instruction.blink", "Blinken");
     }
 
     public static String translate(String input) {

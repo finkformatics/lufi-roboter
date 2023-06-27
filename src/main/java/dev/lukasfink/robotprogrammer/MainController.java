@@ -61,6 +61,12 @@ public class MainController implements Initializable {
     private AnchorPane graphicalStatements;
 
     @FXML
+    private Button zoomOutButton;
+
+    @FXML
+    private Button zoomInButton;
+
+    @FXML
     private ToggleButton playButton;
 
     @FXML
@@ -104,6 +110,8 @@ public class MainController implements Initializable {
         instructionImageMap.put("turn_right", "code_block_stmt.png");
         instructionImageMap.put("terminate", "code_block_end.png");
         instructionImageMap.put("init", "code_block_start.png");
+        instructionImageMap.put("melody", "code_block_stmt.png");
+        instructionImageMap.put("blink", "code_block_stmt.png");
     }
 
     private final HashMap<FlowCommand, CodeBlock> codeBlockMap;
@@ -117,6 +125,8 @@ public class MainController implements Initializable {
 
     private FontIcon trashArea;
 
+    private FontIcon zoomOutIcon;
+    private FontIcon zoomInIcon;
     private FontIcon playIcon;
     private FontIcon pauseIcon;
 
@@ -130,6 +140,8 @@ public class MainController implements Initializable {
 
     private int mazeNumber;
 
+    private double simulationScale;
+
     public MainController() {
         flow = new Flow();
         codeBlockMap = new HashMap<>();
@@ -139,6 +151,8 @@ public class MainController implements Initializable {
         dropClip = new AudioClip(Objects.requireNonNull(getClass().getResource("drop.wav")).toString());
 
         gridOffset = new Point2D(0, 0);
+
+        simulationScale = 1.0;
     }
 
     @Override
@@ -148,6 +162,8 @@ public class MainController implements Initializable {
                 new CodeBlock(instructionImageMap.get(RobotInstruction.BACKWARDS.getValue()), new FlowCommand(RobotInstruction.BACKWARDS)),
                 new CodeBlock(instructionImageMap.get(RobotInstruction.TURN_RIGHT.getValue()), new FlowCommand(RobotInstruction.TURN_RIGHT)),
                 new CodeBlock(instructionImageMap.get(RobotInstruction.TURN_LEFT.getValue()), new FlowCommand(RobotInstruction.TURN_LEFT)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.MELODY.getValue()), new FlowCommand(RobotInstruction.MELODY)),
+                new CodeBlock(instructionImageMap.get(RobotInstruction.BLINK.getValue()), new FlowCommand(RobotInstruction.BLINK)),
                 new CodeBlock(instructionImageMap.get(RobotInstruction.TERMINATE.getValue()), new FlowCommand(RobotInstruction.TERMINATE)),
         };
 
@@ -212,6 +228,8 @@ public class MainController implements Initializable {
 
         robot.setVisible(false);
 
+        zoomOutIcon = new FontIcon("mdmz-zoom_out:56:BLACK");
+        zoomInIcon = new FontIcon("mdmz-zoom_in:56:BLACK");
         playIcon = new FontIcon("mdmz-play_arrow:56:GREEN");
         pauseIcon = new FontIcon("mdomz-pause:56:GREY");
         FontIcon stopIcon = new FontIcon("mdrmz-stop:56:RED");
@@ -235,8 +253,24 @@ public class MainController implements Initializable {
         });
 
         stopButton.setGraphic(stopIcon);
-        stopButton.setOnAction(event -> robot.stop());
+        stopButton.setOnAction(event -> {
+            robot.stop();
+        });
         stopButton.setDisable(true);
+
+        zoomOutButton.setGraphic(zoomOutIcon);
+        zoomOutButton.setOnAction(event -> {
+            simulationScale *= 0.9;
+            robot.setSimulationScale(simulationScale, simulationCanvas.getWidth() / 2, simulationCanvas.getHeight() / 2);
+            redraw();
+        });
+
+        zoomInButton.setGraphic(zoomInIcon);
+        zoomInButton.setOnAction(event -> {
+            simulationScale *= 1.1;
+            robot.setSimulationScale(simulationScale, simulationCanvas.getWidth() / 2, simulationCanvas.getHeight() / 2);
+            redraw();
+        });
 
         robot.addStateListener(newState -> {
             switch (newState) {
@@ -398,7 +432,7 @@ public class MainController implements Initializable {
         while (currentCommand.hasNext()) {
             currentCommand = currentCommand.getNext();
             switch (currentCommand.getInstruction()) {
-                case FORWARD, BACKWARDS, TURN_LEFT, TURN_RIGHT -> robot.addCommand(currentCommand.getInstruction());
+                case FORWARD, BACKWARDS, TURN_LEFT, TURN_RIGHT, MELODY, BLINK -> robot.addCommand(currentCommand.getInstruction());
             }
         }
     }
@@ -433,6 +467,17 @@ public class MainController implements Initializable {
         gc.setImageSmoothing(true);
         gc.setFill(Color.rgb(0, 0, 50));
         gc.fillRect(0, 0, simulationCanvas.getWidth(), simulationCanvas.getHeight());
+        gc.setStroke(Color.gray(0.3));
+        gc.strokeLine(simulationCanvas.getWidth() / 2, 0, simulationCanvas.getWidth() / 2, simulationCanvas.getHeight());
+        for (double x = GRID_GAP * simulationScale; x < simulationCanvas.getWidth() / 2; x += GRID_GAP * simulationScale) {
+            gc.strokeLine(simulationCanvas.getWidth() / 2 - x, 0, simulationCanvas.getWidth() / 2 - x, simulationCanvas.getHeight());
+            gc.strokeLine(simulationCanvas.getWidth() / 2 + x, 0, simulationCanvas.getWidth() / 2 + x, simulationCanvas.getHeight());
+        }
+        gc.strokeLine(0, simulationCanvas.getHeight() / 2, simulationCanvas.getWidth(), simulationCanvas.getHeight() / 2);
+        for (double y = GRID_GAP * simulationScale; y < simulationCanvas.getHeight() / 2; y += GRID_GAP * simulationScale) {
+            gc.strokeLine(0, simulationCanvas.getHeight() / 2 - y, simulationCanvas.getWidth(), simulationCanvas.getHeight() / 2 - y);
+            gc.strokeLine(0, simulationCanvas.getHeight() / 2 + y, simulationCanvas.getWidth(), simulationCanvas.getHeight() / 2 + y);
+        }
 
         switch (mazeNumber) {
             case 1 -> drawMaze1(gc);
@@ -607,7 +652,7 @@ public class MainController implements Initializable {
         flow.updateStates();
         updateLooks();
 
-        playButton.setDisable(flow.getStartCommand().getState() != FlowCommand.State.COMPLETE);
+        playButton.setDisable(!flow.isComplete());
     }
 
     private void makeDraggable(CodeBlock codeBlockNode) {
@@ -680,7 +725,7 @@ public class MainController implements Initializable {
             codeBlock.updateLook();
         }
 
-        transferMenuItem.setDisable(flow.getStartCommand().getState() != FlowCommand.State.COMPLETE);
+        transferMenuItem.setDisable(!flow.isComplete());
     }
 
 }

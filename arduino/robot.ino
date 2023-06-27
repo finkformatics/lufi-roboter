@@ -5,6 +5,8 @@
 #define COMMAND_BACKWARDS 2
 #define COMMAND_TURN_LEFT 3
 #define COMMAND_TURN_RIGHT 4
+#define COMMAND_MELODY 5
+#define COMMAND_BLINK 6
 
 // PINS
 int start_button = 18;
@@ -116,6 +118,96 @@ void turn_right(int millis) {
   left_stop();
   right_stop();
   digitalWrite(led_right, LOW);
+}
+
+void melody_command() {
+  tone(buzzer, NOTE_G5, 125);
+  delay(125);
+  tone(buzzer, NOTE_G5, 125);
+  delay(125);
+  tone(buzzer, NOTE_A5, 125);
+  delay(125);
+  tone(buzzer, NOTE_A5, 125);
+  delay(125);
+  tone(buzzer, NOTE_E5, 125);
+  delay(125);
+  tone(buzzer, NOTE_E5, 125);
+  delay(125);
+  tone(buzzer, NOTE_G5, 125);
+  delay(250);
+
+  tone(buzzer, NOTE_G5, 125);
+  delay(125);
+  tone(buzzer, NOTE_G5, 125);
+  delay(125);
+  tone(buzzer, NOTE_A5, 125);
+  delay(125);
+  tone(buzzer, NOTE_A5, 125);
+  delay(125);
+  tone(buzzer, NOTE_E5, 125);
+  delay(125);
+  tone(buzzer, NOTE_E5, 125);
+  delay(125);
+  tone(buzzer, NOTE_G5, 125);
+  delay(250);
+
+  tone(buzzer, NOTE_G5, 125);
+  delay(125);
+  tone(buzzer, NOTE_G5, 125);
+  delay(125);
+  tone(buzzer, NOTE_A5, 125);
+  delay(125);
+  tone(buzzer, NOTE_A5, 125);
+  delay(125);
+  tone(buzzer, NOTE_C6, 125);
+  delay(125);
+  tone(buzzer, NOTE_C6, 125);
+  delay(125);
+  tone(buzzer, NOTE_B5, 125);
+  delay(250);
+  tone(buzzer, NOTE_B5, 125);
+  delay(250);
+  tone(buzzer, NOTE_A5, 125);
+  delay(250);
+  tone(buzzer, NOTE_G5, 125);
+  delay(250);
+  tone(buzzer, NOTE_F5, 125);
+  delay(250);
+}
+
+void blink_command() {
+    digitalWrite(led_forward, HIGH);
+    digitalWrite(led_backwards, HIGH);
+    digitalWrite(led_left, HIGH);
+    digitalWrite(led_right, HIGH);
+    delay(500);
+    digitalWrite(led_forward, LOW);
+    digitalWrite(led_backwards, LOW);
+    digitalWrite(led_left, LOW);
+    digitalWrite(led_right, LOW);
+    delay(500);
+
+    digitalWrite(led_forward, HIGH);
+    digitalWrite(led_backwards, HIGH);
+    digitalWrite(led_left, HIGH);
+    digitalWrite(led_right, HIGH);
+    delay(500);
+    digitalWrite(led_forward, LOW);
+    digitalWrite(led_backwards, LOW);
+    digitalWrite(led_left, LOW);
+    digitalWrite(led_right, LOW);
+    delay(500);
+
+    digitalWrite(led_forward, HIGH);
+    digitalWrite(led_backwards, HIGH);
+    digitalWrite(led_left, HIGH);
+    digitalWrite(led_right, HIGH);
+    delay(500);
+    digitalWrite(led_forward, LOW);
+    digitalWrite(led_backwards, LOW);
+    digitalWrite(led_left, LOW);
+    digitalWrite(led_right, LOW);
+    delay(500);
 }
 
 void boot_melody() {
@@ -241,7 +333,11 @@ void loop() {
       delay(10000);
       digitalWrite(led_right, LOW);
     } else if (command == "melody") {
-      boot_melody();
+      commands[command_index] = COMMAND_MELODY;
+      command_index++;
+    } else if (command == "blink") {
+      commands[command_index] = COMMAND_BLINK;
+      command_index++;
     } else if (command == "init") {
       command_index = 0;
     } else if (command == "terminate") {
@@ -263,6 +359,10 @@ void loop() {
         turn_left(turning_millis);
       } else if (commands[command_index] == COMMAND_TURN_RIGHT) {
         turn_right(turning_millis);
+      } else if (commands[command_index] == COMMAND_MELODY) {
+        melody_command();
+      } else if (commands[command_index] == COMMAND_BLINK) {
+        blink_command();
       }
 
       command_index++;

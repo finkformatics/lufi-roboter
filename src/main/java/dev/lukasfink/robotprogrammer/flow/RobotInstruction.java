@@ -10,7 +10,9 @@ public enum RobotInstruction {
     BACKWARDS("backwards", true, true),
     TURN_LEFT("turn_left", true, true),
     TURN_RIGHT("turn_right", true, true),
-    TERMINATE("terminate", true, false);
+    TERMINATE("terminate", true, false),
+    MELODY("melody", true, true),
+    BLINK("blink", true, true);
 
     private final String value;
     private final boolean previousAllowed;
@@ -42,6 +44,8 @@ public enum RobotInstruction {
             case "turn_left" -> RobotInstruction.TURN_LEFT;
             case "turn_right" -> RobotInstruction.TURN_RIGHT;
             case "terminate" -> RobotInstruction.TERMINATE;
+            case "melody" -> RobotInstruction.MELODY;
+            case "blink" -> RobotInstruction.BLINK;
             default -> throw new RuntimeException("Unknown instruction: " + value);
         };
     }

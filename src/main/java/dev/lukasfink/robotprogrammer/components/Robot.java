@@ -2,12 +2,14 @@ package dev.lukasfink.robotprogrammer.components;
 
 import dev.lukasfink.robotprogrammer.flow.RobotInstruction;
 import javafx.animation.*;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
@@ -50,6 +52,8 @@ public class Robot extends Group {
 
     private final Queue<RobotInstruction> commandQueue;
 
+    private Point2D robotPosition;
+
     private Direction direction;
 
     private Transition currentTransition;
@@ -57,6 +61,9 @@ public class Robot extends Group {
     private Point2D startPosition;
 
     private State state;
+
+    private Image robotImage;
+    private Image robotBlinkingImage;
 
     private ImageView background;
 
@@ -70,6 +77,10 @@ public class Robot extends Group {
     private Timeline timelineRL;
     private Timeline timelineRR;
 
+    private double simulationScale;
+
+    private AudioClip simulationMelody;
+
     public Robot(Image robotImage) {
         if (tires == null) {
             tires = new Image[TIRE_IMAGE_COUNT];
@@ -78,6 +89,11 @@ public class Robot extends Group {
                 tires[i] = new Image(Objects.requireNonNull(getClass().getResourceAsStream(filePath)));
             }
         }
+
+        this.robotImage = robotImage;
+        this.robotBlinkingImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream("robot_blinking.png")));
+
+        robotPosition = new Point2D(0, 0);
 
         background = new ImageView(robotImage);
         background.setFitWidth(ROBOT_IMAGE_WIDTH);
@@ -103,6 +119,35 @@ public class Robot extends Group {
         commandQueue = new ConcurrentLinkedQueue<>();
         direction = Direction.UP;
         state = State.IDLE;
+
+        simulationScale = 1d;
+
+        simulationMelody = new AudioClip(Objects.requireNonNull(getClass().getResource("robot_melody.mp3")).toString());
+    }
+
+    public void setSimulationScale(double scale, double centerX, double centerY) {
+        Animation.Status currentTransitionStatus = null;
+        if (currentTransition != null) {
+            currentTransitionStatus = currentTransition.getStatus();
+            if (currentTransition.getStatus() == Animation.Status.RUNNING) {
+                currentTransition.pause();
+            }
+        }
+
+        this.simulationScale = scale;
+
+        setScaleX(scale);
+        setScaleY(scale);
+
+        if (currentTransition != null) {
+            currentTransition.setRate(scale);
+
+            if (currentTransitionStatus != null) {
+                if (currentTransitionStatus == Animation.Status.RUNNING) {
+                    currentTransition.play();
+                }
+            }
+        }
     }
 
     private void addTire(final ImageView tire, Timeline timeline, double x, double y) {
@@ -124,10 +169,14 @@ public class Robot extends Group {
     }
 
     public void setXPos(double x) {
+        // robotPosition = new Point2D(x, robotPosition.getY());
+
         setTranslateX(x - ROBOT_GROUP_WIDTH / 2f);
     }
 
     public void setYPos(double y) {
+        // robotPosition = new Point2D(robotPosition.getX(), y);
+
         setTranslateY(y - ROBOT_GROUP_HEIGHT / 2f);
     }
 
@@ -163,6 +212,8 @@ public class Robot extends Group {
             case BACKWARDS -> backwards();
             case TURN_LEFT -> turnLeft();
             case TURN_RIGHT -> turnRight();
+            case MELODY -> melody();
+            case BLINK -> blink();
         }
     }
 
@@ -246,6 +297,7 @@ public class Robot extends Group {
         timelineRR.play();
         currentTransition = new TranslateTransition(Duration.millis(2000), this);
         currentTransition.setInterpolator(Interpolator.LINEAR);
+        currentTransition.setRate(simulationScale);
         switch (direction) {
             case UP -> ((TranslateTransition) currentTransition).setByY(-100);
             case DOWN -> ((TranslateTransition) currentTransition).setByY(100);
@@ -267,6 +319,7 @@ public class Robot extends Group {
         timelineRR.play();
         currentTransition = new TranslateTransition(Duration.millis(2000), this);
         currentTransition.setInterpolator(Interpolator.LINEAR);
+        currentTransition.setRate(simulationScale);
         switch (direction) {
             case UP -> ((TranslateTransition) currentTransition).setByY(100);
             case DOWN -> ((TranslateTransition) currentTransition).setByY(-100);
@@ -323,6 +376,40 @@ public class Robot extends Group {
             triggerNextCommand();
         });
         currentTransition.play();
+    }
+
+    private void melody() {
+        simulationMelody.play();
+        new Thread(() -> {
+            try {
+                Thread.sleep(4000);
+                Platform.runLater(this::triggerNextCommand);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private void blink() {
+        new Thread(() -> {
+            try {
+                Platform.runLater(() -> background.setImage(robotBlinkingImage));
+                Thread.sleep(500);
+                Platform.runLater(() -> background.setImage(robotImage));
+                Thread.sleep(500);
+                Platform.runLater(() -> background.setImage(robotBlinkingImage));
+                Thread.sleep(500);
+                Platform.runLater(() -> background.setImage(robotImage));
+                Thread.sleep(500);
+                Platform.runLater(() -> background.setImage(robotBlinkingImage));
+                Thread.sleep(500);
+                Platform.runLater(() -> background.setImage(robotImage));
+                Thread.sleep(500);
+                Platform.runLater(this::triggerNextCommand);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     public interface RobotStateListener {
