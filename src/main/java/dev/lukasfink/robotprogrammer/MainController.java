@@ -679,7 +679,7 @@ public class MainController implements Initializable {
 
             codeBlockNode.getScene().setCursor(Cursor.HAND);
 
-            if (codeBlockNode.getBoundsInParent().intersects(trashArea.getBoundsInParent())) {
+            if (codeBlockNode.getFlowCommand().getInstruction() != RobotInstruction.INIT && codeBlockNode.getBoundsInParent().intersects(trashArea.getBoundsInParent())) {
                 removeCodeBlock(codeBlockNode);
             }
         });
